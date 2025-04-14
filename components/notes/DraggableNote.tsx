@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export type Note = {
   id: string;
@@ -13,47 +13,58 @@ interface DraggableNoteProps {
   note: Note;
   onDrag: (id: string, x: number, y: number) => void;
   onContentChange: (id: string, content: string) => void;
-  onResize: (id: string, width: number, height: number) => void; // 👈 new prop
+  onResize: (id: string, width: number, height: number) => void;
+  onDelete: (id: string) => void;
 }
 
 export const DraggableNote = ({
   note,
   onDrag,
   onContentChange,
-  onResize
+  onResize,
+  onDelete,
 }: DraggableNoteProps) => {
   const [pos, setPos] = useState({ x: note.x, y: note.y });
   const [size, setSize] = useState({ width: note.width, height: note.height });
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [fontSize, setFontSize] = useState(14);
 
+  // Drag logic...
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Prevent dragging when resizing
-    if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
-
+    if (
+      (e.target as HTMLElement).closest('[contenteditable="true"]') ||
+      (e.target as HTMLElement).tagName === 'INPUT' ||
+      (e.target as HTMLElement).classList.contains('resize-handle')
+    ) {
+      return;
+    }
+  
     setDragging(true);
     const startX = e.clientX - pos.x;
     const startY = e.clientY - pos.y;
-
+  
     const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - startX;
       const newY = e.clientY - startY;
       setPos({ x: newX, y: newY });
     };
-
+  
     const handleMouseUp = () => {
       setDragging(false);
-      onDrag(note.id, pos.x, pos.y); 
+      onDrag(note.id, pos.x, pos.y);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-
+  
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // Resize logic...
   const handleResizeMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent dragging when resizing
+    e.stopPropagation();
     setResizing(true);
     const startX = e.clientX;
     const startY = e.clientY;
@@ -68,8 +79,7 @@ export const DraggableNote = ({
 
     const handleResizeMouseUp = () => {
       setResizing(false);
-      onResize(note.id, size.width, size.height); 
-    
+      onResize(note.id, size.width, size.height);
       document.removeEventListener('mousemove', handleResizeMouseMove);
       document.removeEventListener('mouseup', handleResizeMouseUp);
     };
@@ -78,10 +88,16 @@ export const DraggableNote = ({
     document.addEventListener('mouseup', handleResizeMouseUp);
   };
 
+  const handleBlur = () => {
+    if (contentRef.current) {
+      onContentChange(note.id, contentRef.current.innerHTML);
+    }
+  };
+
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="absolute bg-[#efefef] shadow-md rounded cursor-grab text-black p-4"
+      className="absolute bg-[#f2feff] shadow-md rounded text-black p-3 overflow-hidden"
       style={{
         left: pos.x,
         top: pos.y,
@@ -90,13 +106,35 @@ export const DraggableNote = ({
         zIndex: dragging || resizing ? 50 : 10,
       }}
     >
-      <textarea
-        defaultValue={note.content}
-        className="w-full h-full bg-transparent outline-none resize-none"
-        onBlur={(e) => onContentChange(note.id, e.target.value)}
+      {/* Delete Button */}
+      <button
+        className="absolute top-1 right-1 text-gray-600 font-bold hover:text-gray-400 cursor-pointer p-1 bg-gray-200 rounded-full w-6 h-6 flex justify-center items-center"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(note.id);
+        }}
+      >
+        ×
+      </button>
+
+      {/* Toolbar */}
+      <div className="flex gap-2 mb-2 text-sm">
+        <button onClick={() => setFontSize((s) => Math.min(s + 2, 30))} className="bg-gray-200 px-2 rounded text-sm">A+</button>
+        <button onClick={() => setFontSize((s) => Math.max(s - 2, 10))} className="bg-gray-200 px-2 rounded text-sm">A-</button>
+      </div>
+
+      {/* Editable content */}
+      <div
+        ref={contentRef}
+        onBlur={handleBlur}
+        contentEditable
+        suppressContentEditableWarning
+        className="w-full h-full overflow-auto outline-none"
+        style={{ fontSize: `${fontSize}px` }}
+        dangerouslySetInnerHTML={{ __html: note.content }}
       />
 
-      {/* Resize handle in bottom-right corner */}
+      {/* Resize Handle */}
       <div
         onMouseDown={handleResizeMouseDown}
         className="resize-handle absolute bottom-1 right-1 w-4 h-4 bg-black opacity-40 cursor-se-resize rounded"

@@ -8,12 +8,14 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: any) => {
     e.preventDefault();
@@ -56,9 +58,9 @@ export default function LoginPage() {
 
   return (
     <div className='w-full h-[100vh] flex justify-center items-center text-black'>
-      <form onSubmit={handleLogin} className="space-y-4 p-4 max-w-md mx-auto relative shadow-sm">
+      <form onSubmit={handleLogin} className="space-y-4 p-4 max-w-md mx-auto relative shadow-sm w-[20%]">
         {loading && (
-          <div className='absolute w-full h-full flex justify-center items-center'>
+          <div className='absolute w-full h-full flex justify-center items-center' style={{zIndex:"1"}}>
               <div role="status" className='rounded-full bg-white'>
                   <svg aria-hidden="true" className="w-8 h-8 text-gray-200 animate-spin dark:text-white fill-blue-500" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
@@ -93,14 +95,24 @@ export default function LoginPage() {
           className="bg-[#f3f3f3] rounded p-2 w-full text-black outline-none text-sm"
           disabled={loading}
         />
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="Password"
-          className="bg-[#f3f3f3] rounded p-2 w-full text-black outline-none text-sm"
-          disabled={loading}
-        />
+        <div className="relative w-full">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Password"
+            className="bg-[#f3f3f3] rounded p-2 w-full text-black outline-none text-sm pr-10"
+            disabled={loading}
+          />
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-gray-600"
+            onClick={() => setShowPassword(prev => !prev)}
+            disabled={loading}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+        </div>
         <button
           type="submit"
           className="bg-blue-500 text-white px-4 py-2 rounded w-full cursor-pointer hover:text-black hover:bg-white transition-all duration-300"

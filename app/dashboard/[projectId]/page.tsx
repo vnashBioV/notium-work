@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { collection, getDocs, getDoc, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 import { DraggableNote, type Note } from '@/components/notes/DraggableNote';
@@ -75,6 +75,18 @@ export default function ProjectNotesPage() {
 
     setNotes((prev) => [...prev, newNote]);
   };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      if (!userId || typeof projectId !== 'string') return;
+  
+      await deleteDoc(doc(db, `users/${userId}/projects/${projectId}/notes/${noteId}`));
+      setNotes(prev => prev.filter(note => note.id !== noteId));
+      console.log("Note deleted");
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
+  };  
 
   const handleDrag = async (id: string, x: number, y: number) => {
     setNotes((prev) => prev.map(note => note.id === id ? { ...note, x, y } : note));
@@ -150,6 +162,7 @@ export default function ProjectNotesPage() {
           onDrag={handleDrag}
           onContentChange={handleContentChange}
           onResize={handleResize}
+          onDelete={handleDeleteNote}
         />
       ))}
     </div>
