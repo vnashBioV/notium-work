@@ -25,7 +25,7 @@ export default function RegisterPage() {
 
   return (
     <div className='w-full h-[100vh] flex justify-center items-center text-black'>
-      <form onSubmit={handleRegister} className="space-y-4 p-4 max-w-md mx-auto relative">
+      <form onSubmit={handleRegister} className="space-y-4 p-4 max-w-md mx-auto relative w-[20%]">
         {loading && (
           <div className='absolute w-full h-full flex justify-center items-center'>
               <div role="status" className='rounded-full bg-white'>
