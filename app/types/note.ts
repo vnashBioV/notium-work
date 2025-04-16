@@ -1,11 +1,10 @@
-export interface Note {
+export type Note = {
   id: string;
-  content: string;
-  isHighlighted?: boolean;
-  fontSize?: number;
+  content?: string; 
   x: number;
   y: number;
   width: number;
   height: number;
-}
-  
+};
+
+

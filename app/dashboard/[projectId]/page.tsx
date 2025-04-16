@@ -56,9 +56,10 @@ export default function ProjectNotesPage() {
 
   const handleAddNote = async () => {
     if (!userId || typeof projectId !== 'string') return;
+    const now = new Date().toISOString();
 
     const noteData = {
-      content: 'New Note',
+      content: "New Note",   
       x: 100 + Math.random() * 200,
       y: 100 + Math.random() * 200,
       width: 200,
@@ -142,7 +143,7 @@ export default function ProjectNotesPage() {
   }
 
   return (
-    <div className='p-5'>
+    <div className='p-5 bg-[#f2feff] h-[100vh]'>
       <div className='flex justify-between w-fit'>
         <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer'>Home</div>
         <h1 className='px-4 text-black'>|</h1>

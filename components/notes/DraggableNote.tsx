@@ -1,4 +1,6 @@
+import { on } from 'node:stream';
 import { useState, useRef, useEffect } from 'react';
+import Tiptap from './Tiptap';
 
 export type Note = {
   id: string;
@@ -97,7 +99,7 @@ export const DraggableNote = ({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="absolute bg-[#f2feff] shadow-md rounded text-black p-3 overflow-hidden"
+      className="absolute bg-white shadow-md rounded text-black p-3 overflow-hidden"
       style={{
         left: pos.x,
         top: pos.y,
@@ -119,19 +121,15 @@ export const DraggableNote = ({
 
       {/* Toolbar */}
       <div className="flex gap-2 mb-2 text-sm">
-        <button onClick={() => setFontSize((s) => Math.min(s + 2, 30))} className="bg-gray-200 px-2 rounded text-sm">A+</button>
-        <button onClick={() => setFontSize((s) => Math.max(s - 2, 10))} className="bg-gray-200 px-2 rounded text-sm">A-</button>
+        <button onClick={() => setFontSize((s) => Math.min(s + 2, 30))} className="bg-gray-200 px-2 rounded text-sm cursor-pointer">A+</button>
+        <button onClick={() => setFontSize((s) => Math.max(s - 2, 10))} className="bg-gray-200 px-2 rounded text-sm cursor-pointer">A-</button>
       </div>
 
       {/* Editable content */}
-      <div
-        ref={contentRef}
-        onBlur={handleBlur}
-        contentEditable
-        suppressContentEditableWarning
-        className="w-full h-full overflow-auto outline-none"
-        style={{ fontSize: `${fontSize}px` }}
-        dangerouslySetInnerHTML={{ __html: note.content }}
+      <Tiptap
+        content={note.content}
+        onChange={(val: any) => onContentChange(note.id, val)}
+        // fontSize={fontSize}
       />
 
       {/* Resize Handle */}
