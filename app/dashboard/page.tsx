@@ -138,7 +138,7 @@ export default function Dashboard() {
               className="w-10 h-10 rounded-full border"
             />
             {addProject &&
-              <div className='absolute w-[20%] h-fit p-4 shadow-sm bg-white top-[5rem]'>
+              <div className='absolute sm:w-[35%] w-full h-fit p-4 shadow-sm bg-white top-[5rem]'>
                 <div onClick={() => setAddProject(false)} className='w-full flex justify-end cursor-pointer transition-all duration-300 hover:text-gray-600 text-black text-lg'>x</div>
                 <input
                   type="text"

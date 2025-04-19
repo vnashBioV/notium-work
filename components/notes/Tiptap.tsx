@@ -2,6 +2,7 @@
 
 import {useEditor, EditorContent} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Toolbar } from "./ToolBar";
 
 export default function Tiptap ({
   content,
@@ -16,7 +17,7 @@ export default function Tiptap ({
     editorProps: {
       attributes:{
         class: 
-          "rounded-md border min-h-[150px] border-input bg-back"
+          "rounded-md min-h-[150px] mt-3 outline-none bg-back"
       },
     },
     onUpdate({editor}){
@@ -26,7 +27,7 @@ export default function Tiptap ({
   })
   return (
     <div className="flex flex-col justify-stretch min-h-[250px]">
-      {/* <Toolbar editor={editor}/> */}
+      <Toolbar editor={editor}/>
       <EditorContent editor={editor}/>
     </div>
   )
