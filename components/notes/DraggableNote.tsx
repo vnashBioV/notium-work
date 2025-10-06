@@ -1,6 +1,7 @@
 import { on } from 'node:stream';
 import { useState, useRef, useEffect } from 'react';
 import Tiptap from './Tiptap';
+import { Scaling } from 'lucide-react';
 
 export type Note = {
   id: string;
@@ -35,34 +36,39 @@ export const DraggableNote = ({
 
   // Drag logic...
   const handleMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    // Stop dragging if the click is inside any interactive area:
     if (
-      (e.target as HTMLElement).closest('[contenteditable="true"]') ||
-      (e.target as HTMLElement).tagName === 'INPUT' ||
-      (e.target as HTMLElement).classList.contains('resize-handle')
+      target.closest('[contenteditable="true"]') || 
+      target.closest('.tiptap-toolbar') ||          
+      target.tagName === 'INPUT' ||
+      target.classList.contains('resize-handle')
     ) {
       return;
     }
-  
+
     setDragging(true);
     const startX = e.clientX - pos.x;
     const startY = e.clientY - pos.y;
-  
+
     const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - startX;
       const newY = e.clientY - startY;
       setPos({ x: newX, y: newY });
     };
-  
+
     const handleMouseUp = () => {
       setDragging(false);
       onDrag(note.id, pos.x, pos.y);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
+
 
   // Resize logic...
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -99,7 +105,7 @@ export const DraggableNote = ({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="absolute bg-white shadow-md rounded text-black p-3 overflow-hidden"
+      className="absolute bg-white shadow-md rounded text-[#222222] pt-8 text-sm"
       style={{
         left: pos.x,
         top: pos.y,
@@ -110,7 +116,7 @@ export const DraggableNote = ({
     >
       {/* Delete Button */}
       <button
-        className="absolute top-1 right-1 text-gray-600 font-bold hover:text-gray-400 cursor-pointer p-1 bg-gray-200 rounded-full w-6 h-6 flex justify-center items-center"
+        className="absolute top-1 right-1 z-50 text-gray-600 font-bold hover:text-gray-400 cursor-pointer p-1 w-6 h-6 flex justify-center items-center bg-white"
         onClick={(e) => {
           e.stopPropagation();
           onDelete(note.id);
@@ -119,24 +125,25 @@ export const DraggableNote = ({
         ×
       </button>
 
-      {/* Toolbar */}
-      <div className="flex gap-2 mb-2 text-sm">
-        <button onClick={() => setFontSize((s) => Math.min(s + 2, 30))} className="bg-gray-200 px-2 rounded text-sm cursor-pointer">A+</button>
-        <button onClick={() => setFontSize((s) => Math.max(s - 2, 10))} className="bg-gray-200 px-2 rounded text-sm cursor-pointer">A-</button>
+      {/* Editable content wrapper */}
+      <div
+        className="absolute inset-0 p-3 pb-6 overflow-auto"
+        style={{ pointerEvents: dragging ? "none" : "auto" }}
+      >
+        <Tiptap
+          content={note.content}
+          onChange={(val: any) => onContentChange(note.id, val)}
+        />
       </div>
-
-      {/* Editable content */}
-      <Tiptap
-        content={note.content}
-        onChange={(val: any) => onContentChange(note.id, val)}
-        // fontSize={fontSize}
-      />
 
       {/* Resize Handle */}
       <div
         onMouseDown={handleResizeMouseDown}
-        className="resize-handle absolute bottom-1 right-1 w-4 h-4 bg-black opacity-40 cursor-se-resize rounded"
-      />
+        className="resize-handle absolute bottom-1 right-1 w-4 h-4 bg-[#ffffff] opacity-40 cursor-se-resize rounded z-40"
+      >
+        <Scaling size={16} className='text-[#838383]'/>
+      </div>
     </div>
+
   );
 };

@@ -10,7 +10,6 @@ import {
     Heading2,
 } from "lucide-react";
 import {Toggle} from "../ui/toggle";
-import OrderedList from "@tiptap/extension-ordered-list";
 
 type Props = {
     editor : Editor | null
@@ -21,58 +20,63 @@ export function Toolbar ({ editor }: Props){
         return null
     }
     return (
-        <div className="border border-input bg-transparent rounded-br-lg">
+        <div className="tiptap-toolbar bg-transparent rounded text-[#cfcfcf] flex gap-1 p-1">
             <Toggle
                 size="sm"
+                className="cursor-pointer"
                 pressed={editor.isActive("heading")}
-                onPressedChange={() => 
-                    editor.chain().focus().toggleHeading({level:2}).run()
+                onPressedChange={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
                 }
             >
                 <Heading2 className="h-4 w-4" />
             </Toggle>
-
             <Toggle
                 size="sm"
+                className="cursor-pointer"
                 pressed={editor.isActive("bold")}
-                onPressedChange={() => 
-                    editor.chain().focus().toggleBold().run()
+                onPressedChange={() =>
+                editor.chain().focus().toggleBold().run()
                 }
             >
                 <Bold className="h-4 w-4" />
             </Toggle>
             <Toggle
                 size="sm"
+                className="cursor-pointer"
                 pressed={editor.isActive("italic")}
-                onPressedChange={() => 
-                    editor.chain().focus().toggleItalic().run()
+                onPressedChange={() =>
+                editor.chain().focus().toggleItalic().run()
                 }
             >
                 <Italic className="h-4 w-4" />
             </Toggle>
             <Toggle
                 size="sm"
+                className="cursor-pointer"
                 pressed={editor.isActive("strike")}
-                onPressedChange={() => 
-                    editor.chain().focus().toggleStrike().run()
+                onPressedChange={() =>
+                editor.chain().focus().toggleStrike().run()
                 }
             >
                 <Strikethrough className="h-4 w-4" />
             </Toggle>
             <Toggle
                 size="sm"
+                className="cursor-pointer"
                 pressed={editor.isActive("bulletList")}
-                onPressedChange={() => 
-                    editor.chain().focus().toggleBulletList().run()
+                onPressedChange={() =>
+                editor.chain().focus().toggleBulletList().run()
                 }
             >
                 <List className="h-4 w-4" />
             </Toggle>
             <Toggle
                 size="sm"
+                className="cursor-pointer"
                 pressed={editor.isActive("orderedList")}
-                onPressedChange={() => 
-                    editor.chain().focus().toggleOrderedList().run()
+                onPressedChange={() =>
+                editor.chain().focus().toggleOrderedList().run()
                 }
             >
                 <ListOrdered className="h-4 w-4" />
