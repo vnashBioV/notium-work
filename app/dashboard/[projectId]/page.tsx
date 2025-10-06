@@ -7,8 +7,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 import { DraggableNote, type Note } from '@/components/notes/DraggableNote';
 import type { Project } from '@/app/types/projects';
-import { FolderPlus } from 'lucide-react';
+import { FolderOpenDot, FolderPlus, Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import DescriptionBox from '@/components/DescriptionBox';
+import TodoList from '@/components/TodoList';
 
 export default function ProjectNotesPage() {
   const { projectId } = useParams();
@@ -143,20 +145,47 @@ export default function ProjectNotesPage() {
   }
 
   return (
-    <div className='p-5 bg-[#ebedee] min-h-screen overflow-auto'>
+    <div className='p-10 bg-[#ebedee] min-h-screen overflow-auto relative'>
       <div className='flex justify-between w-fit'>
-        <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer'>Home</div>
+        <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer flex items-center'>
+          <Home size={18} className="mr-3"/>
+          Home
+        </div>
         <h1 className='px-4 text-black'>|</h1>
-        <div className='text-bold text-black'>Project</div>
+        <div className='text-bold text-black flex items-center'>
+          <FolderPlus size={16} className="mr-3"/>
+          Project
+        </div>
       </div>
-      <div className="flex justify-between items-center mb-4 text-black">
-        <h1 className="text-2xl font-semibold text-black">{project?.name}</h1>
+      <div className="flex justify-between items-center my-6 text-black">
+        <div className='flex justify-between items-center'>
+          <div className='w-[70px] h-[70px] flex justify-center items-center rounded-full bg-gray-300 mr-2'>
+              {project?.imageUrl ?(
+                <img
+                    src={project?.imageUrl}
+                    className="object-cover w-full h-full rounded-full border-none"
+                    alt={project?.name}
+                />): (
+                    <FolderOpenDot className="w-10 h-10 text-gray-400" />
+                  )
+              }
+          </div>
+          <h1 className="text-2xl font-semibold text-black">{project?.name}</h1>
+        </div>
         <button onClick={handleAddNote} className="flex items-center gap-2 px-4 py-2 text-black cursor-pointer hover:text-gray-600 rounded">
           <FolderPlus size={16} />
           Add Note
         </button>
       </div>
-      <p>{project?.description}</p>
+      <DescriptionBox
+          userId={userId!}
+          projectId={projectId as string}
+      />
+
+       {/* Floating To-Do List */}
+      {/* <div className="fixed top-40 right-5 z-50 w-80">
+        <TodoList userId={userId!} projectId={projectId as string} />
+      </div> */}
 
       {notes.map((note) => (
         <DraggableNote

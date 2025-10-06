@@ -50,10 +50,10 @@ const RecentProjects = () => {
             >
             {projects.map((project, i) => (
                 <SwiperSlide
-                key={i}
-                className="!h-[228px] cursor-pointer !w-[187px] flex-shrink-0 rounded-xl p-6"
-                style={{ backgroundColor: project.backgroundColour }}
-                onClick={() => router.push(`/dashboard/${project.id}`)}
+                    key={i}
+                    className="!h-[228px] cursor-pointer !w-[187px] flex-shrink-0 rounded-xl p-6"
+                    style={{ backgroundColor: project.backgroundColour }}
+                    onClick={() => router.push(`/dashboard/${project.id}`)}
                 >
                 {/* title */}
                 <h3 className="text-lg font-bold text-white truncate w-full">
