@@ -1,48 +1,86 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Project } from '../types/projects';
+import { FolderOpenDot, FolderPlus, Home } from 'lucide-react';
+import { useProjects } from "@/context/ProjectsContext";
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { projects } = useProjects();
   const router = useRouter();
 
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+  const [currentPage, setCurrentPage] = useState(1);
+  const projectsPerPage = 8;
 
-    const fetchProjects = async () => {
-      const projectsRef = collection(db, `users/${user.uid}/projects`);
-      const snapshot = await getDocs(projectsRef);
-      const projectData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Project[];
-
-      setProjects(projectData);
-    };
-
-    fetchProjects();
-  }, []);
+  const totalPages = Math.ceil(projects.length / projectsPerPage);
+  const startIndex = (currentPage - 1) * projectsPerPage;
+  const endIndex = startIndex + projectsPerPage;
+  const currentProjects = projects.slice(startIndex, endIndex);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Your Projects</h1>
-      <ul className="space-y-2">
-        {projects.map((project) => (
-          <li key={project.id}>
-            <button
-              onClick={() => router.push(`/dashboard/${project.id}`)}
-              className="text-blue-600 hover:underline"
-            >
-              {project.name}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div className='w-full h-screen'>
+      <div className='flex justify-between w-fit p-6'>
+        <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer flex items-center'>
+          <Home size={18} className="mr-3"/>
+          Home
+        </div>
+        <h1 className='px-4 text-black'>|</h1>
+        <div className='text-bold text-black flex items-center'>
+          <FolderPlus size={16} className="mr-3"/>
+          Projects
+        </div>
+      </div>
+      <div className="flex flex-col min-h-screen justify-center items-center p-6">
+        {projects.length === 0 ? (
+          <FolderOpenDot className="w-10 h-10 text-gray-400" />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-center">
+              {currentProjects.map((project) => (
+                <div
+                  key={project.id}
+                  onClick={() => router.push(`/projects/${project.id}`)}
+                  className="cursor-pointer flex flex-col p-6 rounded-xl transition-transform transform hover:scale-105 shadow-md"
+                  style={{ backgroundColor: project.backgroundColour || '#4D3BED' }}
+                >
+                  <h3 className="text-lg font-bold text-white truncate w-full">{project.name}</h3>
+                  <p className="text-white text-sm overflow-hidden text-ellipsis whitespace-nowrap w-full mt-1">
+                    {project.description || "No description"}
+                  </p>
+                  <div className="w-[70px] h-[70px] mt-3 flex items-center justify-center bg-white rounded-lg">
+                    {project.imageUrl ? (
+                      <img
+                        src={project.imageUrl}
+                        className="object-cover w-full h-full rounded-lg"
+                        width={512}
+                        height={512}
+                        alt={project.name}
+                      />
+                    ) : (
+                      <FolderOpenDot className="w-10 h-10 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bullet Pagination */}
+            <div className="flex justify-center items-center gap-3 mt-6">
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(index + 1)}
+                  className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                    currentPage === index + 1
+                      ? 'bg-[#4D3BED] scale-125'
+                      : 'bg-gray-300 hover:bg-[#4D3BED] hover:scale-110'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

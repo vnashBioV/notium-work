@@ -103,27 +103,27 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen relative overflow-hidden">
+    <div className="flex min-h-screen relative overflow-hidden bg-white">
       {/* Mobile Hamburger */}
-      <div className="absolute top-4 left-4 z-50 md:hidden">
+      <div className="absolute top-4 left-4 z-50 lg:hidden bg-white rounded-full w-[50px] h-[50px] flex justify-center items-center">
         <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-800">
           <Menu size={24} />
         </button>
       </div>
 
       {/* Sidebar */}
-      <Navbar />
+      <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 flex flex-col p-6 h-screen">
+      <main className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 h-screen">
         {/* Top Row */}
-        <div className="flex justify-between items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           {/* Search */}
-          <div className="flex items-center flex-1 max-w-sm h-9 rounded-full bg-[#E9E9E9]">
+          <div className="flex items-center w-full sm:max-w-sm h-9 rounded-full bg-[#E9E9E9]">
             <input
               type="text"
               placeholder="Search project..."
-              className="flex-1 rounded-full text-sm px-4 bg-transparent outline-0"
+              className="flex-1 rounded-full text-sm px-4 bg-transparent outline-0 py-1"
             />
             <div className="flex justify-center items-center rounded-full bg-[#4D3BED] h-8 w-8 cursor-pointer mr-1">
               <Search size={16} className="text-white" />
@@ -131,43 +131,61 @@ export default function Dashboard() {
           </div>
 
           {/* Avatar */}
-          <img
-            src={avatarUrl}
-            alt="User Avatar"
-            className="w-10 h-10 rounded-full border"
-          />
+          <div className="flex items-center justify-end w-full sm:w-auto">
+            <img
+              src={avatarUrl}
+              alt="User Avatar"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border"
+            />
+          </div>
         </div>
 
         {/* Hero Banner */}
-        <div className="w-full h-[25vh] mt-5 mb-8 bg-[#DEF8CB] rounded-xl relative flex justify-start items-center pl-10">
-          <img
-            src="/dashboard-intro.svg"
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover rounded-xl"
-          />
-          <p className="font-bold text-4xl relative z-10">
-            Think deeper. Plan sharper. <br /> Flow with Novaq
-          </p>
+        <div className="w-full mt-5 mb-6 md:mb-8 bg-[#DEF8CB] rounded-xl relative overflow-hidden flex items-center">
+          <div className="absolute inset-0">
+            <img
+              src="/dashboard-intro.svg"
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div className="relative z-10 p-6 md:p-10">
+            <p className="font-bold text-2xl sm:text-3xl md:text-4xl lg:text-4xl">
+              Think deeper. Plan sharper.
+              <br />
+              Flow with Novaq
+            </p>
+          </div>
+
+          {/* responsive height */}
+          <style jsx>{`
+            div[role="hero"] {}
+          `}</style>
         </div>
 
-        <div className="flex flex-row flex-grow gap-6">
+        {/* Content Columns (stack on mobile) */}
+        <div className="flex flex-col lg:flex-row flex-grow gap-6">
           {/* LEFT - Projects */}
-          <div className="flex-[3] min-w-0">
+          <div className="w-full lg:flex-[3] min-w-0">
             <div className="flex justify-between items-center mb-3">
               <h1 className="text-black text-lg font-bold">Recent projects</h1>
               <p className="text-sm text-[#4D3BED] cursor-pointer">View all</p>
             </div>
 
             {/* recent projects */}
-            <RecentProjects/>
+            <RecentProjects />
 
             {/* Motivation box */}
-            <Motivation/>
-            
+            <div className="mt-6">
+              <Motivation />
+            </div>
           </div>
 
           {/* RIGHT - Sidebar Content */}
-          <RightSideBar/>
+          <div className="w-full lg:w-1/3 min-w-0">
+            <RightSideBar />
+          </div>
         </div>
       </main>
 
