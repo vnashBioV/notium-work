@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { collection, getDocs, getDoc, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, updateDoc, doc, deleteDoc, type DocumentData, type UpdateData } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 import { DraggableNote, type Note } from '@/components/notes/DraggableNote';
@@ -72,7 +72,7 @@ export default function ProjectNotesPage() {
     );
     if (Object.keys(clean).length === 0) return;
     const projectRef = doc(db, `users/${userId}/projects/${projectId}`);
-    await updateDoc(projectRef, clean as Record<string, unknown>);
+    await updateDoc(projectRef, clean as UpdateData<DocumentData>);
     setProject((prev) => (prev ? { ...prev, ...clean } : prev));
   };
 
