@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from 'react'
 
 const Motivation = () => {
@@ -30,15 +32,15 @@ const Motivation = () => {
   }, [quotes.length]);
 
     return (
-        <div className="mt-15 transition-all duration-500">
+        <div className="mt-8 transition-all duration-500">
             {/* Title */}
             <h2 className="font-bold text-lg">"{quotes[index].title}"</h2>
 
-            <div className="h-[185px] w-[457px] p-6 border-l-2 border-[#D9D9D9] mt-2 relative">
-            <p>{quotes[index].text}</p>
+            <div className="relative mt-2 min-h-[170px] w-full rounded-r-xl border-l-2 border-[#D9D9D9] p-4 sm:p-6 pr-20">
+            <p className="text-sm sm:text-base">{quotes[index].text}</p>
 
             {/* bulb icon */}
-            <div className='absolute w-[80px] h-[80] right-0 bottom-0'>
+            <div className='absolute right-2 bottom-2 h-14 w-14 sm:h-20 sm:w-20'>
                 <img src="/ideaBulb.svg" className='object-cover w-full h-full' alt="" />
             </div>
             </div>

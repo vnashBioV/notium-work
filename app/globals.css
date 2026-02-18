@@ -8,3 +8,17 @@
 body{
     @apply overflow-x-hidden bg-white relative;
 }
+
+button {
+  transition: transform 180ms ease, background-color 180ms ease, color 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input,
+textarea,
+select {
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}

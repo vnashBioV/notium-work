@@ -18,6 +18,19 @@ export type Project = {
   status?: "not-started" | "in-progress" | "completed"; 
   timeSpentOnProject?: number; 
   attachments?: string[]; 
+  resourceLinks?: string[];
+  calendarEvents?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    startAt: string;
+    endAt: string;
+    color?: string;
+    createdAt: string;
+  }>;
 };
 
 type ProjectsContextType = {

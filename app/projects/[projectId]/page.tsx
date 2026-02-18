@@ -6,11 +6,11 @@ import { collection, getDocs, getDoc, addDoc, updateDoc, doc, deleteDoc } from '
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 import { DraggableNote, type Note } from '@/components/notes/DraggableNote';
+import DraggableResource from '@/components/resources/DraggableResource';
 import type { Project } from '@/app/types/projects';
-import { FolderOpenDot, FolderPlus, Home } from 'lucide-react';
+import { ExternalLink, FolderOpenDot, FolderPlus, Home, ImagePlus, Link2, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import DescriptionBox from '@/components/DescriptionBox';
-import TodoList from '@/components/TodoList';
 
 export default function ProjectNotesPage() {
   const { projectId } = useParams();
@@ -18,6 +18,11 @@ export default function ProjectNotesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
+  const [newLink, setNewLink] = useState("");
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetsError, setAssetsError] = useState("");
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [resourcePositions, setResourcePositions] = useState<Record<string, { x: number; y: number }>>({});
   const router = useRouter();
 
   const fetchNotes = async (userId: string, projectId: string) => {
@@ -55,6 +60,157 @@ export default function ProjectNotesPage() {
 
     return () => unsubscribe();
   }, [router, projectId]);
+
+  const updateProjectAssets = async (next: Partial<Project>) => {
+    if (!userId || typeof projectId !== 'string') return;
+    const clean = Object.fromEntries(
+      Object.entries(next).filter(([, value]) => {
+        if (value === undefined) return false;
+        if (Array.isArray(value)) return value.every((item) => item !== undefined && item !== null);
+        return true;
+      })
+    );
+    if (Object.keys(clean).length === 0) return;
+    const projectRef = doc(db, `users/${userId}/projects/${projectId}`);
+    await updateDoc(projectRef, clean as Record<string, unknown>);
+    setProject((prev) => (prev ? { ...prev, ...clean } : prev));
+  };
+
+  const uploadFileToCloudinary = async (file: File) => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !uploadPreset) {
+      throw new Error("Cloudinary config missing");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/upload`,
+      { method: "POST", body: formData }
+    );
+
+    const data = await res.json();
+    if (!res.ok || !data?.secure_url) {
+      throw new Error(data?.error?.message || "Upload failed");
+    }
+    return data.secure_url as string;
+  };
+
+  const handleAddImage = async (file: File | null) => {
+    if (!file || !project) return;
+    setAssetsLoading(true);
+    setAssetsError("");
+    try {
+      const url = await uploadFileToCloudinary(file);
+      if (!url) throw new Error("Missing uploaded file URL");
+      const current = project.attachments ?? [];
+      await updateProjectAssets({ attachments: [...current, url] });
+    } catch (error) {
+      console.error("Error adding image:", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to upload image to Cloudinary.";
+      setAssetsError(message);
+    } finally {
+      setAssetsLoading(false);
+    }
+  };
+
+  const handleRemoveImage = async (imageUrl: string) => {
+    if (!project) return;
+    setAssetsLoading(true);
+    setAssetsError("");
+    try {
+      const next = (project.attachments ?? []).filter((item) => item !== imageUrl);
+      await updateProjectAssets({ attachments: next });
+    } catch (error) {
+      console.error("Error removing image:", error);
+      setAssetsError("Failed to remove image.");
+    } finally {
+      setAssetsLoading(false);
+    }
+  };
+
+  const normalizeLink = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  const handleAddLink = async () => {
+    if (!project) return;
+    const normalized = normalizeLink(newLink);
+    if (!normalized) return;
+
+    try {
+      new URL(normalized);
+    } catch {
+      setAssetsError("Please enter a valid link.");
+      return;
+    }
+
+    setAssetsLoading(true);
+    setAssetsError("");
+    try {
+      const current = project.resourceLinks ?? [];
+      if (current.includes(normalized)) {
+        setAssetsError("Link already exists.");
+        return;
+      }
+      await updateProjectAssets({ resourceLinks: [...current, normalized] });
+      setNewLink("");
+    } catch (error) {
+      console.error("Error adding link:", error);
+      setAssetsError("Failed to add link.");
+    } finally {
+      setAssetsLoading(false);
+    }
+  };
+
+  const handleRemoveLink = async (link: string) => {
+    if (!project) return;
+    setAssetsLoading(true);
+    setAssetsError("");
+    try {
+      const next = (project.resourceLinks ?? []).filter((item) => item !== link);
+      await updateProjectAssets({ resourceLinks: next });
+    } catch (error) {
+      console.error("Error removing link:", error);
+      setAssetsError("Failed to remove link.");
+    } finally {
+      setAssetsLoading(false);
+    }
+  };
+
+  const resourceItems = [
+    ...(project?.attachments ?? []).map((value) => ({ id: `image-${value}`, type: "image" as const, value })),
+    ...(project?.resourceLinks ?? []).map((value) => ({ id: `link-${value}`, type: "link" as const, value })),
+  ];
+
+  useEffect(() => {
+    if (resourceItems.length === 0) return;
+    setResourcePositions((prev) => {
+      const next = { ...prev };
+      for (const item of resourceItems) {
+        if (!next[item.id]) {
+          next[item.id] = {
+            x: 420 + Math.floor(Math.random() * 220),
+            y: 170 + Math.floor(Math.random() * 260),
+          };
+        }
+      }
+      return next;
+    });
+  }, [project?.attachments, project?.resourceLinks]);
+
+  const handleDragResource = (id: string, x: number, y: number) => {
+    setResourcePositions((prev) => ({ ...prev, [id]: { x, y } }));
+  };
 
   const handleAddNote = async () => {
     if (!userId || typeof projectId !== 'string') return;
@@ -145,8 +301,8 @@ export default function ProjectNotesPage() {
   }
 
   return (
-    <div className='p-10 bg-[#ebedee] min-h-screen overflow-auto relative'>
-      <div className='flex justify-between w-fit'>
+    <div className='relative min-h-screen overflow-auto bg-[#ebedee] p-4 sm:p-6 lg:p-10'>
+      <div className='flex w-full flex-wrap items-center gap-2'>
         <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer flex items-center'>
           <Home size={18} className="mr-3"/>
           Home
@@ -157,9 +313,9 @@ export default function ProjectNotesPage() {
           Project
         </div>
       </div>
-      <div className="flex justify-between items-center my-6 text-black">
-        <div className='flex justify-between items-center'>
-          <div className='w-[70px] h-[70px] flex justify-center items-center rounded-full bg-gray-300 mr-2'>
+      <div className="my-6 flex flex-col gap-4 text-black sm:flex-row sm:items-center sm:justify-between">
+        <div className='flex items-center'>
+          <div className='mr-2 flex h-14 w-14 items-center justify-center rounded-full bg-gray-300 sm:h-[70px] sm:w-[70px]'>
               {project?.imageUrl ?(
                 <img
                     src={project?.imageUrl}
@@ -170,12 +326,28 @@ export default function ProjectNotesPage() {
                   )
               }
           </div>
-          <h1 className="text-2xl font-semibold text-black">{project?.name}</h1>
+          <h1 className="text-xl font-semibold text-black sm:text-2xl">{project?.name}</h1>
         </div>
-        <button onClick={handleAddNote} className="flex items-center gap-2 px-4 py-2 text-black cursor-pointer hover:text-gray-600 rounded">
-          <FolderPlus size={16} />
-          Add Note
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setResourcesOpen(true)}
+            className="w-fit rounded border border-gray-300 px-4 py-2 text-black hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+          >
+            <Link2 size={16} />
+            Resources
+          </button>
+          <button
+            onClick={() => router.push(`/calendar?projectId=${projectId}`)}
+            className="w-fit rounded border border-[#4D3BED] px-4 py-2 text-[#4D3BED] hover:bg-[#4D3BED] hover:text-white cursor-pointer flex items-center gap-2"
+          >
+            <FolderPlus size={16} />
+            Schedule
+          </button>
+          <button onClick={handleAddNote} className="w-fit rounded px-4 py-2 text-black hover:text-gray-600 cursor-pointer flex items-center gap-2">
+            <FolderPlus size={16} />
+            Add Note
+          </button>
+        </div>
       </div>
       <DescriptionBox
           userId={userId!}
@@ -187,6 +359,102 @@ export default function ProjectNotesPage() {
         <TodoList userId={userId!} projectId={projectId as string} />
       </div> */}
 
+      {resourcesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-3xl rounded-xl bg-white p-4 sm:p-5 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-black">Project Resources</h2>
+              <button
+                onClick={() => setResourcesOpen(false)}
+                className="rounded p-1 text-gray-600 hover:bg-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {assetsError && <p className="mb-3 text-sm text-red-600">{assetsError}</p>}
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="rounded-lg border border-gray-200 p-3">
+                <h3 className="mb-2 text-sm font-semibold text-black">Images</h3>
+                <label className="mb-3 inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#4D3BED] px-3 py-2 text-sm text-[#4D3BED] hover:bg-[#4D3BED] hover:text-white transition-all duration-200">
+                  <ImagePlus size={16} />
+                  {assetsLoading ? "Uploading..." : "Add image"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleAddImage(e.target.files?.[0] || null)}
+                    disabled={assetsLoading}
+                  />
+                </label>
+
+                {project?.attachments && project.attachments.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {project.attachments.map((imageUrl) => (
+                      <div key={imageUrl} className="group relative overflow-hidden rounded-lg bg-gray-100">
+                        <img src={imageUrl} alt="attachment" className="h-24 w-full object-cover" />
+                        <button
+                          onClick={() => handleRemoveImage(imageUrl)}
+                          className="absolute right-1 top-1 rounded bg-black/70 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No images added yet.</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 p-3">
+                <h3 className="mb-2 text-sm font-semibold text-black">Links</h3>
+                <div className="mb-3 flex gap-2">
+                  <input
+                    type="url"
+                    value={newLink}
+                    onChange={(e) => setNewLink(e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#4D3BED]"
+                  />
+                  <button
+                    onClick={handleAddLink}
+                    disabled={assetsLoading || !newLink.trim()}
+                    className="rounded-md bg-[#4D3BED] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {project?.resourceLinks && project.resourceLinks.length > 0 ? (
+                  <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                    {project.resourceLinks.map((link) => (
+                      <div key={link} className="flex items-center justify-between gap-2 rounded-md border border-gray-200 px-2 py-2">
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex min-w-0 items-center gap-2 text-sm text-[#4D3BED] hover:underline"
+                        >
+                          <ExternalLink size={14} />
+                          <span className="truncate">{link}</span>
+                        </a>
+                        <button onClick={() => handleRemoveLink(link)} className="rounded p-1 text-red-600 hover:bg-red-50">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No links added yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {notes.map((note) => (
         <DraggableNote
           key={note.id}
@@ -195,6 +463,19 @@ export default function ProjectNotesPage() {
           onContentChange={handleContentChange}
           onResize={handleResize}
           onDelete={handleDeleteNote}
+        />
+      ))}
+
+      {resourceItems.map((item) => (
+        <DraggableResource
+          key={item.id}
+          id={item.id}
+          type={item.type}
+          value={item.value}
+          x={resourcePositions[item.id]?.x ?? 420}
+          y={resourcePositions[item.id]?.y ?? 170}
+          onDrag={handleDragResource}
+          onDelete={item.type === "image" ? handleRemoveImage : handleRemoveLink}
         />
       ))}
     </div>

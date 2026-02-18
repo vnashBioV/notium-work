@@ -77,7 +77,7 @@ export default function TodoList({ userId, projectId }: { userId: string; projec
   }, [todos]);
 
   return (
-    <div className="bg-white rounded-lg p-4 mt-6 shadow-md max-w-[400px]">
+    <div className="mt-6 w-full max-w-[400px] rounded-lg bg-white p-4 shadow-md">
       <h2 className="font-semibold text-lg mb-2">Schedule</h2>
 
       <div className="flex flex-col gap-2 mb-3">

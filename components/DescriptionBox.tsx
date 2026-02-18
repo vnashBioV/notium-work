@@ -51,7 +51,7 @@ export default function DescriptionBox({ userId, projectId }: DescriptionBoxProp
 
   return (
     <div
-      className="relative w-[400px] group"
+      className="group relative w-full max-w-[400px]"
       onMouseEnter={() => !isEditing && setShowPopup(true)}
       onMouseLeave={() => setShowPopup(false)}
     >
@@ -83,7 +83,7 @@ export default function DescriptionBox({ userId, projectId }: DescriptionBoxProp
       )}
 
       {showPopup && !isEditing && description && (
-        <div className="absolute top-full mt-2 left-0 z-50 bg-white border border-gray-300 shadow-lg rounded p-2 text-sm w-max max-w-[400px]">
+        <div className="absolute left-0 top-full z-50 mt-2 w-max max-w-[90vw] sm:max-w-[400px] rounded border border-gray-300 bg-white p-2 text-sm shadow-lg">
           {description}
         </div>
       )}

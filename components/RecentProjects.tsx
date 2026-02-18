@@ -1,21 +1,31 @@
+"use client";
+
 import React from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Scrollbar } from "swiper/modules";
 import { useProjects } from "@/context/ProjectsContext";
+import type { Project } from "@/context/ProjectsContext";
 import { FolderOpenDot } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import "swiper/css";
 import "swiper/css/scrollbar";
 
-const RecentProjects = () => {
-  const { projects } = useProjects();
+type RecentProjectsProps = {
+  projects?: Project[];
+  emptyMessage?: string;
+  limit?: number;
+};
+
+const RecentProjects = ({ projects: incomingProjects, emptyMessage, limit = 8 }: RecentProjectsProps) => {
+  const { projects: contextProjects } = useProjects();
+  const projects = (incomingProjects ?? contextProjects).slice(0, limit);
   const router = useRouter();
 
   return (
-    <div className="overflow-hidden relative">
+    <div className="relative overflow-hidden">
       {projects.length === 0 ? (
-        <div className="!h-[228px] !w-[187px] p-6 flex flex-col text-center items-center justify-center rounded-xl bg-gray-100 text-gray-500">
+        <div className="flex h-[200px] w-full max-w-[260px] flex-col items-center justify-center rounded-xl bg-gray-100 p-6 text-center text-gray-500 sm:h-[228px]">
           <div className="w-[50%] h-[50%] text-center">
             <img
               src="/empty-box.png"
@@ -25,7 +35,7 @@ const RecentProjects = () => {
               alt="empty"
             />
           </div>
-          <p>Go ahead and create a project</p>
+          <p>{emptyMessage ?? "Go ahead and create a project"}</p>
         </div>
       ) : (
         <Swiper
@@ -46,10 +56,10 @@ const RecentProjects = () => {
         >
           {projects.map((project, i) => (
             <SwiperSlide
-              key={i}
-              className="!h-[228px] cursor-pointer !w-[187px] flex-shrink-0 rounded-xl p-6"
+              key={project.id ?? i}
+              className="!h-[220px] !w-[170px] cursor-pointer flex-shrink-0 rounded-xl p-5 sm:!h-[228px] sm:!w-[187px] sm:p-6"
               style={{ backgroundColor: project.backgroundColour }}
-              onClick={() => router.push(`/projects/${project.id}`)}
+              onClick={() => project.id && router.push(`/projects/${project.id}`)}
             >
               <h3 className="text-lg font-bold text-white truncate w-full">
                 {project.name}

@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import type { Auth } from "firebase/auth";
 import { getAuth } from "firebase/auth";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -16,7 +17,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Firebase services
-const auth = getAuth(app);
+const auth: Auth =
+  typeof window !== "undefined"
+    ? getAuth(app)
+    : (null as unknown as Auth);
 const db = getFirestore(app);
 const storage = getStorage(app);
 

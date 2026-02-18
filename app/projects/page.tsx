@@ -18,8 +18,8 @@ export default function ProjectsPage() {
   const currentProjects = projects.slice(startIndex, endIndex);
 
   return (
-    <div className='w-full h-screen'>
-      <div className='flex justify-between w-fit p-6'>
+    <div className='w-full min-h-screen'>
+      <div className='flex w-full flex-wrap items-center gap-2 p-4 sm:p-6'>
         <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer flex items-center'>
           <Home size={18} className="mr-3"/>
           Home
@@ -30,12 +30,12 @@ export default function ProjectsPage() {
           Projects
         </div>
       </div>
-      <div className="flex flex-col min-h-screen justify-center items-center p-6">
+      <div className="flex min-h-[calc(100vh-88px)] flex-col items-center justify-center p-4 sm:p-6">
         {projects.length === 0 ? (
           <FolderOpenDot className="w-10 h-10 text-gray-400" />
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-center">
+            <div className="grid w-full max-w-7xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
               {currentProjects.map((project) => (
                 <div
                   key={project.id}

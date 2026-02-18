@@ -5,6 +5,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useProjects } from "@/context/ProjectsContext";
 import { FolderOpenDot } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface AddProjectModalProps {
   isOpen: boolean;
@@ -22,8 +23,6 @@ export default function AddProjectModal({ isOpen, onClose, user }: AddProjectMod
   const [attachments, setAttachments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const { refreshProjects } = useProjects();
-
-  if (!isOpen) return null;
 
   const resetFields = () => {
     setProjectName("");
@@ -94,8 +93,22 @@ export default function AddProjectModal({ isOpen, onClose, user }: AddProjectMod
   };
 
   return (
-    <div className="fixed inset-0 bg-[#000000c9] flex items-center justify-center z-50">
-      <div className="bg-white w-[400px] rounded-xl shadow-lg p-6 overflow-y-auto max-h-[90vh]">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#000000c9] p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <motion.div
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-lg sm:p-6"
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 14, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+          >
         <h2 className="text-lg font-bold mb-4">Add New Project</h2>
 
         <input
@@ -197,19 +210,21 @@ export default function AddProjectModal({ isOpen, onClose, user }: AddProjectMod
         <div className="flex justify-end gap-3 mt-4">
           <button
             onClick={handleCancel}
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 active:scale-[0.98] transition-all duration-200"
           >
             Cancel
           </button>
           <button
             onClick={handleAddProject}
             disabled={loading}
-            className="px-4 py-2 rounded bg-[#4D3BED] text-white hover:opacity-80 transition-all duration-300 disabled:opacity-50"
+            className="px-4 py-2 rounded bg-[#4D3BED] text-white hover:opacity-80 active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
           >
             {loading ? "Adding..." : "Add"}
           </button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

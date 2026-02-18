@@ -8,5 +8,7 @@ export interface Project {
   userId: string;
   createdAt: string;
   imageUrl: string;
+  attachments?: string[];
+  resourceLinks?: string[];
   notes?: Note[];
 }
