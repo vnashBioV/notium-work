@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { CalendarDays, ChevronLeft, ChevronRight, Menu, Plus } from 'lucide-react';
@@ -60,7 +60,6 @@ function createEventId() {
 
 export default function CalendarPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { projects } = useProjects();
 
   const [user, setUser] = useState<User | null>(null);
@@ -104,11 +103,12 @@ export default function CalendarPage() {
   }, [router]);
 
   useEffect(() => {
-    const queryProjectId = searchParams.get('projectId');
+    if (typeof window === "undefined") return;
+    const queryProjectId = new URLSearchParams(window.location.search).get('projectId');
     if (!queryProjectId) return;
     setProjectFilter(queryProjectId);
     setFormProjectId(queryProjectId);
-  }, [searchParams]);
+  }, []);
 
   const events = useMemo<CalendarEvent[]>(() => {
     const nextEvents: CalendarEvent[] = [];
