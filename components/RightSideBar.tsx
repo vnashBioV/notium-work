@@ -18,6 +18,12 @@ const RightSideBar = () => {
       0
     );
     const overviewProjects = projects.slice(0, 2);
+    const formatHours = (value: number) => {
+      const safe = Number(value || 0);
+      if (safe <= 0) return "0m";
+      if (safe < 1) return `${Math.max(1, Math.round(safe * 60))}m`;
+      return `${safe.toFixed(1)}h`;
+    };
 
     return (
         <div className="flex h-full w-full flex-col gap-6 rounded-lg p-5 sm:p-6 shadow-lg">
@@ -39,7 +45,7 @@ const RightSideBar = () => {
             </div>
             <div className='flex justify-between items-center border-b border-[#e0e0e0] pb-2'>
                 <p>Overall project time</p>
-                <p>{totalHours}h</p>
+                <p>{formatHours(totalHours)}</p>
             </div>
 
             {/* projects over view */}
@@ -76,7 +82,7 @@ const RightSideBar = () => {
                       </div>
                     </div>
                     <div className='flex items-center justify-between text-xs'>
-                      <div className='flex flex-row items-center gap-1'><Clock size={12}/><p>{projectHours}h</p></div>
+                      <div className='flex flex-row items-center gap-1'><Clock size={12}/><p>{formatHours(projectHours)}</p></div>
                       <div className='flex flex-row items-center gap-1'><Paperclip size={12}/><p>{attachmentsCount} attachments</p></div>
                     </div>
                   </div>

@@ -4,6 +4,8 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail,
   setPersistence, 
   browserLocalPersistence,
@@ -12,6 +14,26 @@ import {
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from "lucide-react";
+import { AnimatePresence, motion } from 'framer-motion';
+
+const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+
+const getReadableAuthError = (error: any) => {
+  const code = error?.code as string | undefined;
+  if (!code) return error?.message || 'Something went wrong. Please try again.';
+  if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Google sign-in popup was blocked/closed. Redirecting to Google sign-in...';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'This domain is not authorized in Firebase Authentication. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
+  }
+  return error?.message || code;
+};
+
+const persistGoogleCalendarAccessToken = (uid: string, accessToken: string | null | undefined) => {
+  if (typeof window === 'undefined' || !uid || !accessToken) return;
+  localStorage.setItem(`notium_google_access_token_${uid}`, accessToken);
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -43,7 +65,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setErrorPopup("✅ Password reset email sent! Please check your inbox.");
+      setErrorPopup('Password reset email sent. Please check your inbox.');
     } catch (error: any) {
       setErrorPopup(error.message);
     } finally {
@@ -53,23 +75,55 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    provider.addScope(GOOGLE_CALENDAR_SCOPE);
+    provider.setCustomParameters({ prompt: 'select_account' });
     setLoading(true);
     try {
       await setPersistence(auth, browserLocalPersistence);
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      persistGoogleCalendarAccessToken(result.user.uid, credential?.accessToken);
       router.push("/dashboard");
     } catch (error: any) {
-      setErrorPopup(error.message);
+      const code = error?.code as string | undefined;
+      if (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request'
+      ) {
+        try {
+          setErrorPopup(getReadableAuthError(error));
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError: any) {
+          setErrorPopup(getReadableAuthError(redirectError));
+        }
+      } else {
+        setErrorPopup(getReadableAuthError(error));
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    let mounted = true;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (!result) return;
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        persistGoogleCalendarAccessToken(result.user.uid, credential?.accessToken);
+      })
+      .catch((error: any) => {
+        if (mounted) setErrorPopup(getReadableAuthError(error));
+      });
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) router.push("/dashboard");
     });
-    return () => unsubscribe();
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [router]);
 
   return (
@@ -100,9 +154,22 @@ export default function LoginPage() {
         )}
 
         {/* Error Popup */}
-        {errorPopup && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-            <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full text-center text-black">
+        <AnimatePresence>
+          {errorPopup && (
+            <motion.div
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <motion.div
+                className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full text-center text-black"
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 14, scale: 0.98 }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+              >
               <p className="mb-4 text-sm">{errorPopup}</p>
               <button
                 onClick={() => setErrorPopup(null)}
@@ -110,9 +177,10 @@ export default function LoginPage() {
               >
                 OK
               </button>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <h1 className="text-xl font-bold mb-2">Sign in to Novaq</h1>
         <p className="text-sm text-gray-700">

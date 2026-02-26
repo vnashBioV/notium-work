@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, sendPasswordResetEmail, signOut, updateProfile, type User } from 'firebase/auth';
-import { Menu, Save, ShieldAlert, SlidersHorizontal, UserCircle2 } from 'lucide-react';
+import { Menu, Save, ShieldAlert, SlidersHorizontal, Upload, UserCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { auth } from '@/lib/firebase';
 import { useProjects } from '@/context/ProjectsContext';
@@ -27,6 +27,9 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
 
   const [displayName, setDisplayName] = useState('');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
 
   useEffect(() => {
@@ -39,6 +42,8 @@ export default function SettingsPage() {
 
       setUser(nextUser);
       setDisplayName(nextUser.displayName ?? '');
+      setProfilePhotoUrl(nextUser.photoURL ?? '');
+      setPreviewUrl(nextUser.photoURL ?? '');
       setSettings(loadUserSettings(nextUser.uid));
       setCheckingAuth(false);
     });
@@ -57,8 +62,38 @@ export default function SettingsPage() {
     setError('');
 
     try {
-      if (displayName.trim() !== (user.displayName ?? '')) {
-        await updateProfile(user, { displayName: displayName.trim() });
+      let nextPhotoUrl = profilePhotoUrl;
+      if (profileImageFile) {
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+        if (!cloudName || !uploadPreset) {
+          setError('Cloudinary is not configured for profile uploads.');
+          setSaving(false);
+          return;
+        }
+        const formData = new FormData();
+        formData.append('file', profileImageFile);
+        formData.append('upload_preset', uploadPreset);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.secure_url) {
+          throw new Error(data?.error?.message || 'Failed to upload profile image.');
+        }
+        nextPhotoUrl = data.secure_url as string;
+      }
+
+      const nextName = displayName.trim();
+      if (nextName !== (user.displayName ?? '') || nextPhotoUrl !== (user.photoURL ?? '')) {
+        await updateProfile(user, {
+          displayName: nextName,
+          photoURL: nextPhotoUrl || null,
+        });
+        setProfilePhotoUrl(nextPhotoUrl);
+        setPreviewUrl(nextPhotoUrl);
+        setProfileImageFile(null);
       }
       const normalized = saveUserSettings(user.uid, settings);
       setSettings(normalized);
@@ -87,6 +122,7 @@ export default function SettingsPage() {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
+        photoURL: user.photoURL,
       },
       stats: {
         totalProjects: projects.length,
@@ -162,6 +198,46 @@ export default function SettingsPage() {
           <div className="mb-3 flex items-center gap-2">
             <UserCircle2 size={18} className="text-[#4D3BED]" />
             <h2 className="text-lg font-semibold text-black">Account</h2>
+          </div>
+          <div className="mb-4 flex items-center gap-3">
+            <img
+              src={
+                previewUrl ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || user.email || 'User')}&background=random&size=256&color=fff&bold=true`
+              }
+              alt="Profile"
+              className="h-16 w-16 rounded-full border object-cover"
+            />
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <Upload size={14} />
+                Upload Photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setProfileImageFile(file);
+                    if (!file) {
+                      setPreviewUrl(profilePhotoUrl);
+                      return;
+                    }
+                    setPreviewUrl(URL.createObjectURL(file));
+                  }}
+                />
+              </label>
+              <button
+                onClick={() => {
+                  setProfileImageFile(null);
+                  setProfilePhotoUrl('');
+                  setPreviewUrl('');
+                }}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Remove Photo
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>

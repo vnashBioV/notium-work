@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { CalendarDays, ChevronLeft, ChevronRight, Menu, Plus } from 'lucide-react';
+import { Bell, BellRing, CalendarDays, ChevronLeft, ChevronRight, Download, Menu, Plus, RefreshCw, Wand2 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { useProjects } from '@/context/ProjectsContext';
 import { addMinutesToTime, DEFAULT_USER_SETTINGS, loadUserSettings, type UserSettings } from '@/lib/userSettings';
@@ -58,6 +58,16 @@ function createEventId() {
   return `event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getGoogleAccessTokenStorageKey(uid: string) {
+  return `notium_google_access_token_${uid}`;
+}
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 export default function CalendarPage() {
   const router = useRouter();
   const { projects } = useProjects();
@@ -87,6 +97,15 @@ export default function CalendarPage() {
   const [formProjectId, setFormProjectId] = useState<string>('none');
   const [formColor, setFormColor] = useState('#4D3BED');
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
+  const [googleClientReady, setGoogleClientReady] = useState(false);
+  const [googleClientError, setGoogleClientError] = useState('');
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [importingGoogle, setImportingGoogle] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [reminderMinutes, setReminderMinutes] = useState(10);
+  const tokenClientRef = useRef<any>(null);
+  const notifiedEventIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
@@ -101,6 +120,126 @@ export default function CalendarPage() {
 
     return () => unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!user?.uid) {
+      setGoogleAccessToken(null);
+      return;
+    }
+    const storedToken = localStorage.getItem(getGoogleAccessTokenStorageKey(user.uid));
+    if (storedToken) {
+      setGoogleAccessToken(storedToken);
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID;
+    if (!googleClientId) {
+      setGoogleClientError('Missing Google client ID. Set NEXT_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID.');
+      return;
+    }
+
+    let cancelled = false;
+    let pollInterval: number | null = null;
+    let pollTimeout: number | null = null;
+
+    const stopPolling = () => {
+      if (pollInterval !== null) window.clearInterval(pollInterval);
+      if (pollTimeout !== null) window.clearTimeout(pollTimeout);
+      pollInterval = null;
+      pollTimeout = null;
+    };
+
+    const checkReady = () => {
+      const ready = !!window.google?.accounts?.oauth2;
+      if (!cancelled && ready) {
+        stopPolling();
+        setGoogleClientReady(true);
+        setGoogleClientError('');
+      }
+      return ready;
+    };
+
+    const beginPollingForReady = () => {
+      if (checkReady()) return;
+      stopPolling();
+      pollInterval = window.setInterval(() => {
+        checkReady();
+      }, 250);
+      pollTimeout = window.setTimeout(() => {
+        if (!checkReady() && !cancelled) {
+          stopPolling();
+          setGoogleClientReady(false);
+          setGoogleClientError('Google Identity script did not initialize. Disable blockers and refresh.');
+        }
+      }, 7000);
+    };
+
+    const existing = document.querySelector('script[data-google-identity="1"]');
+    if (existing) {
+      beginPollingForReady();
+      return () => {
+        cancelled = true;
+        stopPolling();
+      };
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleIdentity = '1';
+    script.onload = () => {
+      if (cancelled) return;
+      if (!checkReady()) {
+        beginPollingForReady();
+        if (!window.google?.accounts?.oauth2) {
+          setGoogleClientError('Google Identity loaded but OAuth client is unavailable.');
+        }
+      }
+    };
+    script.onerror = () => {
+      stopPolling();
+      if (cancelled) return;
+      setGoogleClientReady(false);
+      setGoogleClientError('Google script failed to load (often blocked by extension/network policy).');
+    };
+    document.body.appendChild(script);
+
+    pollTimeout = window.setTimeout(() => {
+      if (!checkReady() && !cancelled) {
+        stopPolling();
+        setGoogleClientReady(false);
+        setGoogleClientError('Google script load timed out. Check blockers/privacy extensions.');
+      }
+    }, 7000);
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientReady) return;
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID;
+    if (!googleClientId || !window.google?.accounts?.oauth2) return;
+    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+      client_id: googleClientId,
+      scope: 'https://www.googleapis.com/auth/calendar.events',
+      callback: () => {},
+    });
+    setGoogleClientError('');
+  }, [googleClientReady]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -368,6 +507,225 @@ export default function CalendarPage() {
     }
   };
 
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setInfoMessage('Notifications are not supported in this browser.');
+      return;
+    }
+    const result = await Notification.requestPermission();
+    setNotificationPermission(result);
+    setInfoMessage(result === 'granted' ? 'Meeting notifications enabled.' : 'Notifications not enabled.');
+  };
+
+  const requestGoogleAccessToken = async (prompt: 'consent' | '' = '') => {
+    if (!tokenClientRef.current) throw new Error('Google Calendar OAuth is not configured.');
+    return new Promise<string>((resolve, reject) => {
+      tokenClientRef.current.callback = (response: any) => {
+        if (response?.error || !response?.access_token) {
+          reject(new Error(response?.error || 'Failed to connect Google Calendar.'));
+          return;
+        }
+        const accessToken = response.access_token as string;
+        if (user?.uid && typeof window !== 'undefined') {
+          localStorage.setItem(getGoogleAccessTokenStorageKey(user.uid), accessToken);
+        }
+        resolve(accessToken);
+      };
+      const requestOptions: Record<string, string> = {};
+      if (prompt) requestOptions.prompt = prompt;
+      if (user?.email) requestOptions.login_hint = user.email;
+      tokenClientRef.current.requestAccessToken(requestOptions);
+    });
+  };
+
+  const getGoogleRequestHeaders = async () => {
+    if (!googleClientReady || !tokenClientRef.current) {
+      throw new Error(
+        googleClientError || 'Google sign-in is not ready. Disable blockers, allow cookies, then refresh.'
+      );
+    }
+    let token = googleAccessToken;
+    if (!token) {
+      token = await requestGoogleAccessToken('consent');
+      setGoogleAccessToken(token);
+    }
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const getGoogleSyncMap = () => {
+    if (!user || typeof window === 'undefined') return {} as Record<string, string>;
+    const key = `notium_google_event_map_${user.uid}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return {} as Record<string, string>;
+    try {
+      return JSON.parse(raw) as Record<string, string>;
+    } catch {
+      return {} as Record<string, string>;
+    }
+  };
+
+  const setGoogleSyncMap = (map: Record<string, string>) => {
+    if (!user || typeof window === 'undefined') return;
+    const key = `notium_google_event_map_${user.uid}`;
+    localStorage.setItem(key, JSON.stringify(map));
+  };
+
+  const handleSyncToGoogleCalendar = async () => {
+    try {
+      setSyncingGoogle(true);
+      const headers = await getGoogleRequestHeaders();
+      const now = new Date();
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 60);
+      const map = getGoogleSyncMap();
+      const nextMap = { ...map };
+      const candidates = filteredEvents.filter((event) => {
+        const start = new Date(event.startAt);
+        return start >= now && start <= horizon;
+      });
+
+      for (const event of candidates) {
+        const key = `${event.projectId}:${event.id}`;
+        const payload = {
+          summary: event.title,
+          description: `${event.description ?? ''}\n\nSource: Notium (${event.projectName})`.trim(),
+          start: { dateTime: event.startAt },
+          end: { dateTime: event.endAt },
+          colorId: '6',
+        };
+        const linkedGoogleId = nextMap[key];
+        const method = linkedGoogleId ? 'PATCH' : 'POST';
+        const endpoint = linkedGoogleId
+          ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${linkedGoogleId}`
+          : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+
+        const response = await fetch(endpoint, {
+          method,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || 'Failed to sync events to Google Calendar.');
+        }
+        const data = await response.json();
+        if (data?.id) nextMap[key] = data.id as string;
+      }
+
+      setGoogleSyncMap(nextMap);
+      setInfoMessage(`Synced ${candidates.length} event(s) to Google Calendar.`);
+    } catch (error) {
+      console.error(error);
+      setInfoMessage('Google Calendar sync failed.');
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
+  const handleImportFromGoogleCalendar = async () => {
+    if (!user) return;
+    if (projectFilter === 'all') {
+      setInfoMessage('Pick a specific project filter before importing from Google Calendar.');
+      return;
+    }
+    const targetProject = projects.find((project) => project.id === projectFilter);
+    if (!targetProject?.id) {
+      setInfoMessage('Selected project no longer exists.');
+      return;
+    }
+
+    try {
+      setImportingGoogle(true);
+      const headers = await getGoogleRequestHeaders();
+      const timeMin = new Date();
+      timeMin.setDate(timeMin.getDate() - 7);
+      const timeMax = new Date();
+      timeMax.setDate(timeMax.getDate() + 60);
+      const params = new URLSearchParams({
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        maxResults: '100',
+      });
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
+        headers,
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to import from Google Calendar.');
+      }
+      const data = await response.json();
+      const googleEvents = Array.isArray(data?.items) ? data.items : [];
+      const existing = [...(targetProject.calendarEvents ?? [])];
+      let importedCount = 0;
+
+      for (const item of googleEvents) {
+        const startIso = item?.start?.dateTime;
+        const endIso = item?.end?.dateTime;
+        if (!startIso || !endIso) continue;
+        const start = new Date(startIso);
+        const end = new Date(endIso);
+        const date = formatDateKey(start);
+        const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+        const endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+        const title = (item?.summary as string | undefined)?.trim() || 'Google Calendar event';
+        const duplicate = existing.some((event) =>
+          event.title === title &&
+          event.date === date &&
+          event.startTime === startTime &&
+          event.endTime === endTime
+        );
+        if (duplicate) continue;
+        existing.push({
+          id: createEventId(),
+          title,
+          description: (item?.description as string | undefined) ?? '',
+          date,
+          startTime,
+          endTime,
+          startAt: start.toISOString(),
+          endAt: end.toISOString(),
+          color: '#4D3BED',
+          createdAt: new Date().toISOString(),
+        });
+        importedCount += 1;
+      }
+
+      await persistProjectEvents(targetProject.id, existing);
+      setInfoMessage(importedCount > 0 ? `Imported ${importedCount} event(s) from Google Calendar.` : 'No new Google events to import.');
+    } catch (error) {
+      console.error(error);
+      setInfoMessage('Google Calendar import failed.');
+    } finally {
+      setImportingGoogle(false);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (notificationPermission !== 'granted') return;
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      for (const event of events) {
+        const key = `${event.projectId}:${event.id}`;
+        if (notifiedEventIdsRef.current.has(key)) continue;
+        const startMs = new Date(event.startAt).getTime();
+        const leadMs = reminderMinutes * 60 * 1000;
+        if (startMs - now <= leadMs && startMs - now > 0) {
+          new Notification('Meeting Reminder', {
+            body: `${event.title} starts at ${event.startTime}${event.projectName ? ` (${event.projectName})` : ''}`,
+          });
+          notifiedEventIdsRef.current.add(key);
+        }
+      }
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [events, notificationPermission, reminderMinutes]);
+
   if (checkingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -403,7 +761,7 @@ export default function CalendarPage() {
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-black"
+              className="h-10 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-black shadow-[0_3px_10px_rgba(15,23,42,0.05)] outline-none"
             >
               <option value="all">All projects</option>
               {projects
@@ -416,21 +774,66 @@ export default function CalendarPage() {
             </select>
             <button
               onClick={handleSmartPlanWeek}
-              className="rounded-md border border-[#4D3BED] px-3 py-2 text-sm font-semibold text-[#4D3BED] hover:bg-[#4D3BED] hover:text-white active:scale-[0.98] transition-all duration-200"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm font-medium text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] active:scale-[0.98]"
             >
+              <Wand2 size={16} className="shrink-0 text-[#4D3BED]" />
               Smart Plan Week
             </button>
             <button
               onClick={openCreateModal}
-              className="flex items-center gap-2 rounded-md bg-[#4D3BED] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#4D3BED]/40 bg-[#EEF0FF] px-3 text-sm font-semibold text-[#1B1C3A] shadow-[0_3px_10px_rgba(77,59,237,0.08)] transition hover:bg-[#E5E8FF] active:scale-[0.98]"
             >
-              <Plus size={16} />
+              <Plus size={16} className="shrink-0 text-[#4D3BED]" />
               Add Event
             </button>
+            <button
+              onClick={handleSyncToGoogleCalendar}
+              disabled={syncingGoogle}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={`shrink-0 text-[#4D3BED] ${syncingGoogle ? 'animate-spin' : ''}`} />
+              {syncingGoogle ? 'Syncing...' : 'Sync to Google'}
+            </button>
+            <button
+              onClick={handleImportFromGoogleCalendar}
+              disabled={importingGoogle}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] disabled:opacity-50"
+            >
+              <Download size={16} className="shrink-0 text-[#4D3BED]" />
+              {importingGoogle ? 'Importing...' : 'Import from Google'}
+            </button>
+            <button
+              onClick={requestNotificationPermission}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6]"
+            >
+              {notificationPermission === 'granted' ? (
+                <BellRing size={16} className="shrink-0 text-[#4D3BED]" />
+              ) : (
+                <Bell size={16} className="shrink-0 text-[#4D3BED]" />
+              )}
+              {notificationPermission === 'granted' ? 'Notifications On' : 'Enable Notifications'}
+            </button>
+            <label className="flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-xs text-gray-700 shadow-[0_3px_10px_rgba(15,23,42,0.05)]">
+              Reminder
+              <input
+                type="number"
+                min={1}
+                max={120}
+                value={reminderMinutes}
+                onChange={(e) => setReminderMinutes(Math.max(1, Number(e.target.value) || 10))}
+                className="h-6 w-14 rounded-md border border-gray-300 bg-white px-1 py-0.5 text-xs text-black"
+              />
+              min
+            </label>
           </div>
         </div>
 
         {infoMessage && <div className="mb-4 rounded-md bg-[#F2F0FF] px-3 py-2 text-sm text-[#2D1FA8]">{infoMessage}</div>}
+        {googleClientError && (
+          <div className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {googleClientError}
+          </div>
+        )}
 
         <div className="grid flex-1 grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
           <section className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4">

@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { useProjects } from "@/context/ProjectsContext";
 import { FolderOpenDot } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 interface AddProjectModalProps {
   isOpen: boolean;
@@ -18,18 +19,17 @@ export default function AddProjectModal({ isOpen, onClose, user }: AddProjectMod
   const [description, setDescription] = useState("");
   const [backgroundColour, setBackgroundColour] = useState("#DEF8CB");
   const [status, setStatus] = useState<"not-started" | "in-progress" | "completed">("not-started");
-  const [timeSpentOnProject, setTimeSpentOnProject] = useState<number>(0);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const { refreshProjects } = useProjects();
+  const router = useRouter();
 
   const resetFields = () => {
     setProjectName("");
     setDescription("");
     setBackgroundColour("#DEF8CB");
     setStatus("not-started");
-    setTimeSpentOnProject(0);
     setImageFile(null);
     setAttachments([]);
   };
@@ -70,16 +70,17 @@ export default function AddProjectModal({ isOpen, onClose, user }: AddProjectMod
         createdAt: new Date().toISOString(),
         imageUrl,
         status,
-        timeSpentOnProject,
+        timeSpentOnProject: 0,
         attachments: attachmentUrls,
       };
 
       const userProjectsCollection = collection(db, `users/${user.uid}/projects`);
-      await addDoc(userProjectsCollection, projectData);
+      const createdProject = await addDoc(userProjectsCollection, projectData);
 
       await refreshProjects();
       resetFields();
       onClose();
+      router.push(`/projects/${createdProject.id}`);
     } catch (error) {
       console.error("Error adding project: ", error);
     } finally {
@@ -145,14 +146,6 @@ export default function AddProjectModal({ isOpen, onClose, user }: AddProjectMod
           <option value="in-progress">In Progress</option>
           <option value="completed">Completed</option>
         </select>
-
-        <label className="block mb-2 text-sm">Time Spent (hours)</label>
-        <input
-          type="number"
-          value={timeSpentOnProject}
-          onChange={(e) => setTimeSpentOnProject(Number(e.target.value))}
-          className="w-full p-2 mb-3 rounded bg-[#e7e7e7] outline-none"
-        />
 
         {/* Main Image */}
         <label className="block mb-2 text-sm">Image</label>

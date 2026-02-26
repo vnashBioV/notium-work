@@ -24,7 +24,9 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLimit, setSearchLimit] = useState(8);
   const { projects } = useProjects();
-  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.email ?? "User")}&background=random&size=256&color=fff&bold=true`;
+  const avatarUrl = user?.photoURL
+    ? user.photoURL
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || user?.email || "User")}&background=random&size=256&color=fff&bold=true`;
   const router = useRouter();
   const { isModalOpen, closeModal } = useModal();
 

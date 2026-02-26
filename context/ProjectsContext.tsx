@@ -19,6 +19,22 @@ export type Project = {
   timeSpentOnProject?: number; 
   attachments?: string[]; 
   resourceLinks?: string[];
+  resourceDocuments?: Array<{
+    url: string;
+    name: string;
+    mimeType?: string;
+  }>;
+  resourceLayout?: Record<string, {
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+  }>;
+  mindMapEdges?: Array<{
+    id: string;
+    from: string;
+    to: string;
+  }>;
   calendarEvents?: Array<{
     id: string;
     title: string;
