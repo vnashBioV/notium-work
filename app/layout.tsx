@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ModalProvider } from "@/context/ModalContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProjectsProvider } from "@/context/ProjectsContext";
+import MotionProvider from "@/components/MotionProvider";
 
 import "./globals.css";
 
@@ -31,13 +32,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <ProjectsProvider>
-            <ModalProvider>
-              {children}
-            </ModalProvider>
-          </ProjectsProvider>
-        </AuthProvider>
+        <MotionProvider>
+          <AuthProvider>
+            <ProjectsProvider>
+              <ModalProvider>
+                {children}
+              </ModalProvider>
+            </ProjectsProvider>
+          </AuthProvider>
+        </MotionProvider>
       </body>
     </html>
   );

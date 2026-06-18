@@ -1,15 +1,12 @@
 "use client";
 
 import React from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Scrollbar } from "swiper/modules";
+import { motion } from "framer-motion";
 import { useProjects } from "@/context/ProjectsContext";
 import type { Project } from "@/context/ProjectsContext";
-import { FolderOpenDot } from "lucide-react";
+import { Clock3 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-import "swiper/css";
-import "swiper/css/scrollbar";
+import { getProjectVisual } from "@/lib/projectVisuals";
 
 type RecentProjectsProps = {
   projects?: Project[];
@@ -17,16 +14,36 @@ type RecentProjectsProps = {
   limit?: number;
 };
 
+const cardGrid = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.07,
+    },
+  },
+};
+const cardReveal = {
+  hidden: { opacity: 0, y: 24, scale: 0.985 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+};
+
 const RecentProjects = ({ projects: incomingProjects, emptyMessage, limit = 8 }: RecentProjectsProps) => {
   const { projects: contextProjects } = useProjects();
   const projects = (incomingProjects ?? contextProjects).slice(0, limit);
   const router = useRouter();
 
+  const formatHours = (value: number) => {
+    const safe = Number(value || 0);
+    if (safe <= 0) return "0m";
+    if (safe < 1) return `${Math.max(1, Math.round(safe * 60))}m`;
+    return `${safe.toFixed(1)}h`;
+  };
+
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative">
       {projects.length === 0 ? (
-        <div className="flex h-[200px] w-full max-w-[260px] flex-col items-center justify-center rounded-xl bg-gray-100 p-6 text-center text-gray-500 sm:h-[228px]">
-          <div className="w-[50%] h-[50%] text-center">
+        <div className="flex h-[200px] w-full max-w-[260px] flex-col items-center justify-center rounded-[24px] bg-white/70 p-6 text-center text-slate-500 shadow-sm sm:h-[220px]">
+          <div className="h-[50%] w-[50%] text-center">
             <img
               src="/empty-box.png"
               className="object-cover"
@@ -38,61 +55,51 @@ const RecentProjects = ({ projects: incomingProjects, emptyMessage, limit = 8 }:
           <p>{emptyMessage ?? "Go ahead and create a project"}</p>
         </div>
       ) : (
-        <Swiper
-          modules={[Autoplay, Scrollbar]}
-          slidesPerView="auto"
-          spaceBetween={16}
-          loop={true}
-          freeMode={true}
-          scrollbar={{ draggable: true, hide: true }} 
-          allowTouchMove={true}
-          speed={5000}
-          autoplay={{
-            delay: 0,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: true,
-          }}
-          className="w-full recent-projects-swiper"
-        >
-          {projects.map((project, i) => (
-            <SwiperSlide
-              key={project.id ?? i}
-              className="!h-[220px] !w-[170px] cursor-pointer flex-shrink-0 rounded-xl p-5 sm:!h-[228px] sm:!w-[187px] sm:p-6"
-              style={{ backgroundColor: project.backgroundColour }}
-              onClick={() => project.id && router.push(`/projects/${project.id}`)}
-            >
-              <h3 className="text-lg font-bold text-white truncate w-full">
-                {project.name}
-              </h3>
+        <motion.div variants={cardGrid} initial="hidden" animate="visible" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          {projects.map((project, i) => {
+            const { icon: Icon, accentClass } = getProjectVisual(project.name);
 
-              <p className="text-white text-sm overflow-hidden text-ellipsis whitespace-nowrap w-full">
-                {project.description || "No description"}
-              </p>
+            return (
+              <motion.button
+                variants={cardReveal}
+                whileHover={{ boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)" }}
+                whileTap={{ scale: 0.992 }}
+                key={project.id ?? i}
+                type="button"
+                onClick={() => project.id && router.push(`/projects/${project.id}`)}
+                className="group flex min-h-[188px] flex-col rounded-[24px] bg-white/72 p-4 text-left shadow-sm backdrop-blur-sm transition"
+              >
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-[16px] bg-gradient-to-br ${accentClass}`}>
+                  {project.imageUrl ? (
+                    <img
+                      src={project.imageUrl}
+                      className="h-full w-full rounded-[16px] object-cover"
+                      width={48}
+                      height={48}
+                      alt={project.name}
+                    />
+                  ) : (
+                    <Icon className="h-6 w-6" />
+                  )}
+                </div>
 
-              <div className="w-[70px] h-[70px] mt-3 flex items-center justify-center bg-white rounded-lg">
-                {project.imageUrl ? (
-                  <img
-                    src={project.imageUrl}
-                    className="object-cover w-full h-full rounded-lg"
-                    width={512}
-                    height={512}
-                    alt={project.name}
-                  />
-                ) : (
-                  <FolderOpenDot className="w-10 h-10 text-gray-400" />
-                )}
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+                <h3 className="truncate text-base font-bold tracking-[-0.02em] text-slate-950">
+                  {project.name}
+                </h3>
+
+                <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-slate-500">
+                  {project.description || "No description"}
+                </p>
+
+                <div className="mt-auto flex items-center gap-2 pt-5 text-[13px] text-slate-500">
+                  <Clock3 className="h-3.5 w-3.5" />
+                  <span>{formatHours(Number(project.timeSpentOnProject ?? 0))}</span>
+                </div>
+              </motion.button>
+            );
+          })}
+        </motion.div>
       )}
-      <style jsx global>{`
-        .recent-projects-swiper .swiper-scrollbar {
-          display: none !important;
-          opacity: 0 !important;
-          visibility: hidden !important;
-        }
-      `}</style>
     </div>
   );
 };

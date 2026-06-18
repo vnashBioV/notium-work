@@ -5,11 +5,26 @@
 *{
   box-sizing: border-box;
 }
+:root {
+  --dashboard-surface: rgba(255, 255, 255, 0.9);
+  --dashboard-border: rgba(148, 163, 184, 0.18);
+  --dashboard-text: #0f172a;
+  --dashboard-muted: #64748b;
+  --dashboard-accent: #4f46e5;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body{
     @apply overflow-x-hidden bg-white relative;
+    color: var(--dashboard-text);
+    font-family: var(--font-geist-sans), sans-serif;
 }
 
 button {
+  cursor: pointer;
   transition: transform 180ms ease, background-color 180ms ease, color 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
 }
 
@@ -21,4 +36,25 @@ input,
 textarea,
 select {
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+
+.dashboard-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.16), transparent 22%),
+    radial-gradient(circle at bottom left, rgba(186, 230, 253, 0.22), transparent 24%);
+}
+
+@media (min-width: 1280px) {
+  .dashboard-shell {
+    overflow: hidden;
+  }
 }

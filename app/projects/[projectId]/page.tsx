@@ -8,10 +8,12 @@ import { db, auth } from '@/lib/firebase';
 import { DraggableNote, type Note } from '@/components/notes/DraggableNote';
 import DraggableResource from '@/components/resources/DraggableResource';
 import type { MindMapEdge, Project } from '@/app/types/projects';
-import { CalendarDays, ExternalLink, Eye, FileText, FolderOpenDot, FolderPlus, Home, ImagePlus, Link2, Trash2, X } from 'lucide-react';
+import { Bot, CalendarDays, ExternalLink, Eye, FileText, FolderOpenDot, FolderPlus, Home, ImagePlus, Link2, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import DescriptionBox from '@/components/DescriptionBox';
+import ProjectCompanion from '@/components/ProjectCompanion';
+import { getProjectVisual } from '@/lib/projectVisuals';
 
 export default function ProjectNotesPage() {
   const { projectId } = useParams();
@@ -29,6 +31,7 @@ export default function ProjectNotesPage() {
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<"verify" | "confirm">("verify");
   const [deleteError, setDeleteError] = useState("");
   const [deletingProject, setDeletingProject] = useState(false);
+  const [companionOpen, setCompanionOpen] = useState(false);
   const [resourcePositions, setResourcePositions] = useState<Record<string, { x: number; y: number }>>({});
   const [resourceSizes, setResourceSizes] = useState<Record<string, { width: number; height: number }>>({});
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -441,15 +444,22 @@ export default function ProjectNotesPage() {
   }, [nodeCenters]);
 
   const handleAddNote = async () => {
+    await handleCreateNote("default");
+  };
+
+  const handleCreateNote = async (type: "default" | "story") => {
     if (!userId || typeof projectId !== 'string') return;
-    const now = new Date().toISOString();
 
     const noteData = {
-      content: "New Note",   
+      content:
+        type === "story"
+          ? "<h2>Full Story Synopsis</h2><p><strong>Premise:</strong> What is the full story about?</p><p><strong>Beginning:</strong> </p><p><strong>Middle:</strong> </p><p><strong>Ending:</strong> </p><h2>Character Background</h2><p><strong>Main character:</strong> </p><p><strong>Backstory:</strong> </p><p><strong>Goal:</strong> </p><p><strong>Flaw:</strong> </p><h2>Timeline of Major Events</h2><ol><li>Opening situation</li><li>Inciting incident</li><li>Major reversal</li><li>Climax</li><li>Resolution</li></ol><h2>Environmental Storytelling Ideas</h2><ul><li>Visual clue in the environment</li><li>Prop that reveals history</li><li>Location with hidden narrative meaning</li></ul><h2>Journal Entries</h2><p><strong>Entry 01:</strong> </p><h2>Voice Log Scripts</h2><p><strong>Voice log 01:</strong> </p><h2>Object Descriptions</h2><p><strong>Key object:</strong> </p><p><strong>Meaning:</strong> </p><h2>Final Ending Sequence</h2><p><strong>Final trigger:</strong> </p><p><strong>Final image:</strong> </p><p><strong>Emotion to leave the player with:</strong> </p>"
+          : "New Note",
       x: 100 + Math.random() * 200,
       y: 100 + Math.random() * 200,
-      width: 200,
-      height: 150,
+      width: type === "story" ? 320 : 200,
+      height: type === "story" ? 240 : 150,
+      type,
     };
 
     const projectNotesCollection = collection(db, `users/${userId}/projects/${projectId}/notes`);
@@ -462,6 +472,13 @@ export default function ProjectNotesPage() {
 
     setNotes((prev) => [...prev, newNote]);
   };
+
+  const isGameProject = useMemo(() => {
+    const normalized = `${project?.name ?? ""} ${project?.description ?? ""}`.toLowerCase();
+    return ["game", "level", "quest", "story", "character", "rpg", "npc"].some((keyword) =>
+      normalized.includes(keyword)
+    );
+  }, [project?.description, project?.name]);
 
   const handleDeleteNote = async (noteId: string) => {
     try {
@@ -632,16 +649,23 @@ export default function ProjectNotesPage() {
     )
   }
 
+  const projectVisual = getProjectVisual(project?.name);
+  const ProjectVisualIcon = projectVisual.icon;
+
   return (
     <div data-canvas-scroll className='relative min-h-screen overflow-auto bg-[#ebedee] p-4 sm:p-6 md:pr-24 lg:pr-28'>
-      <div className='flex w-full flex-wrap items-center gap-2'>
-        <div onClick={() => router.push('/dashboard')} className='text-gray-400 cursor-pointer flex items-center'>
-          <Home size={18} className="mr-3"/>
+      <div className="flex w-full flex-wrap items-center gap-2 text-sm text-slate-500">
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard')}
+          className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 transition hover:bg-white"
+        >
+          <Home size={16} />
           Home
-        </div>
-        <h1 className='px-4 text-black'>|</h1>
-        <div className='text-bold text-black flex items-center'>
-          <FolderPlus size={16} className="mr-3"/>
+        </button>
+        <span className="text-slate-300">/</span>
+        <div className="inline-flex items-center gap-2 rounded-full bg-white/40 px-3 py-2 text-slate-700">
+          <FolderPlus size={15} />
           Project
         </div>
       </div>
@@ -661,6 +685,16 @@ export default function ProjectNotesPage() {
             {selectedNodeIds.length > 0 && (
               <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
             )}
+          </button>
+          <button
+            onClick={() => setCompanionOpen((prev) => !prev)}
+            title="Companion"
+            aria-label="Toggle companion"
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+              companionOpen ? "bg-[#4D3BED] text-white" : "text-[#1F2430] hover:bg-[#F3F4F6]"
+            }`}
+          >
+            <Bot size={18} />
           </button>
           <button
             onClick={() => setResourcesOpen(true)}
@@ -686,6 +720,16 @@ export default function ProjectNotesPage() {
           >
             <FileText size={18} />
           </button>
+          {isGameProject ? (
+            <button
+              onClick={() => handleCreateNote("story")}
+              title="Add story note"
+              aria-label="Add story note"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-[#b45309] transition hover:bg-[#fff1d6]"
+            >
+              <FolderPlus size={18} />
+            </button>
+          ) : null}
           <div className="my-1 h-px w-8 bg-gray-200" />
           <button
             onClick={handleClearMindMap}
@@ -707,20 +751,33 @@ export default function ProjectNotesPage() {
         </div>
       </div>
 
-      <div className="my-6 flex flex-col gap-4 text-black sm:flex-row sm:items-center sm:justify-between">
-        <div className='flex items-center'>
-          <div className='mr-2 flex h-14 w-14 items-center justify-center rounded-full bg-gray-300 sm:h-[70px] sm:w-[70px]'>
-              {project?.imageUrl ?(
-                <img
-                    src={project?.imageUrl}
-                    className="object-cover w-full h-full rounded-full border-none"
-                    alt={project?.name}
-                />): (
-                    <FolderOpenDot className="w-10 h-10 text-gray-400" />
-                  )
-              }
+      <div className="my-6 flex flex-col gap-4 text-black sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-[760px] rounded-[28px] bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(255,255,255,0.72))] px-5 py-5 shadow-[0_16px_44px_rgba(15,23,42,0.08)] backdrop-blur sm:px-6">
+          <div className="flex items-start gap-4">
+            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] shadow-inner sm:h-[74px] sm:w-[74px] ${projectVisual.panelClass}`}>
+                {project?.imageUrl ?(
+                  <img
+                      src={project?.imageUrl}
+                      className="h-full w-full rounded-[22px] object-cover"
+                      alt={project?.name}
+                  />): (
+                      <ProjectVisualIcon className="h-9 w-9" />
+                    )
+                }
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 inline-flex items-center rounded-full bg-[#eef0ff] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4D3BED]">
+                Project space
+              </div>
+              <h1 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-slate-950 sm:text-[2rem]">{project?.name}</h1>
+              <div className="mt-3 max-w-[560px]">
+                <DescriptionBox
+                    userId={userId!}
+                    projectId={projectId as string}
+                />
+              </div>
+            </div>
           </div>
-          <h1 className="text-xl font-semibold text-black sm:text-2xl">{project?.name}</h1>
         </div>
         <div className="hidden items-center gap-2 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs text-gray-700 shadow-sm md:flex">
           <span>{selectedNodeIds.length}/2 selected</span>
@@ -728,7 +785,15 @@ export default function ProjectNotesPage() {
           <span>{(project?.mindMapEdges?.length ?? 0)} links</span>
         </div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2 md:hidden">
+      <div className="mt-4 flex flex-wrap items-center gap-2 md:hidden">
+        <button
+          onClick={() => setCompanionOpen((prev) => !prev)}
+          className={`rounded-md border px-3 py-2 text-xs ${
+            companionOpen ? "border-[#4D3BED] bg-[#4D3BED] text-white" : "border-gray-300 bg-white text-black"
+          }`}
+        >
+          Companion
+        </button>
         <button
           onClick={() => setResourcesOpen(true)}
           className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs text-black"
@@ -747,6 +812,14 @@ export default function ProjectNotesPage() {
         >
           Add Note
         </button>
+        {isGameProject ? (
+          <button
+            onClick={() => handleCreateNote("story")}
+            className="rounded-md border border-[#f3d19c] bg-[#fff7e8] px-3 py-2 text-xs text-[#b45309]"
+          >
+            Story Note
+          </button>
+        ) : null}
         <button
           onClick={handleConnectSelected}
           disabled={selectedNodeIds.length !== 2}
@@ -768,15 +841,30 @@ export default function ProjectNotesPage() {
           Delete
         </button>
       </div>
-      <DescriptionBox
-          userId={userId!}
-          projectId={projectId as string}
-      />
-
        {/* Floating To-Do List */}
       {/* <div className="fixed top-40 right-5 z-50 w-80">
         <TodoList userId={userId!} projectId={projectId as string} />
       </div> */}
+
+      <AnimatePresence>
+        {project && companionOpen ? (
+          <motion.div
+            className="fixed bottom-4 left-4 right-4 z-50 md:bottom-6 md:left-auto md:right-20 md:top-1/2 md:w-[340px] md:-translate-y-1/2"
+            initial={{ opacity: 0, x: 18, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 12, y: 12, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            <ProjectCompanion
+              className="max-h-[72vh] overflow-y-auto"
+              companion={project.companion}
+              onChange={async (companion) => {
+                await updateProjectAssets({ companion });
+              }}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {resourcesOpen && (

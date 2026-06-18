@@ -35,6 +35,21 @@ export type Project = {
     from: string;
     to: string;
   }>;
+  companion?: {
+    latestPrompt?: string;
+    summary?: string;
+    status?: "idle" | "planning" | "ready";
+    tasks?: Array<{
+      id: string;
+      title: string;
+      detail?: string;
+      status: "todo" | "doing" | "done";
+      priority: "high" | "medium" | "low";
+      createdAt: string;
+      completedAt?: string;
+    }>;
+    updatedAt?: string;
+  };
   calendarEvents?: Array<{
     id: string;
     title: string;

@@ -12,6 +12,24 @@ export interface ResourceDocument {
   mimeType?: string;
 }
 
+export interface CompanionTask {
+  id: string;
+  title: string;
+  detail?: string;
+  status: "todo" | "doing" | "done";
+  priority: "high" | "medium" | "low";
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface ProjectCompanionState {
+  latestPrompt?: string;
+  summary?: string;
+  status?: "idle" | "planning" | "ready";
+  tasks?: CompanionTask[];
+  updatedAt?: string;
+}
+
 export interface Project {
   id: string;
   description?: string; 
@@ -32,5 +50,6 @@ export interface Project {
     height?: number;
   }>;
   mindMapEdges?: MindMapEdge[];
+  companion?: ProjectCompanionState;
   notes?: Note[];
 }

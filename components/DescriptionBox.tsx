@@ -51,13 +51,13 @@ export default function DescriptionBox({ userId, projectId }: DescriptionBoxProp
 
   return (
     <div
-      className="group relative w-full max-w-[400px]"
+      className="group relative w-full"
       onMouseEnter={() => !isEditing && setShowPopup(true)}
       onMouseLeave={() => setShowPopup(false)}
     >
       {!isEditing ? (
         <p
-          className="overflow-hidden text-ellipsis whitespace-nowrap w-full cursor-pointer text-gray-800"
+          className="w-full cursor-pointer text-sm leading-6 text-slate-600"
           onDoubleClick={() => setIsEditing(true)}
         >
           {description || "No description yet..."}
@@ -65,7 +65,7 @@ export default function DescriptionBox({ userId, projectId }: DescriptionBoxProp
       ) : (
         <div className="flex items-center gap-2">
           <input
-            className="border px-2 py-1 rounded w-full text-sm"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#4D3BED]"
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             autoFocus
@@ -74,7 +74,7 @@ export default function DescriptionBox({ userId, projectId }: DescriptionBoxProp
           />
           <button
             onClick={handleSave}
-            className="px-2 py-1 bg-[#4D3BED] cursor-pointer text-white rounded text-sm hover:opacity-50 disabled:bg-gray-400"
+            className="rounded-xl bg-[#4D3BED] px-3 py-2 text-sm text-white hover:opacity-90 disabled:bg-gray-400"
             disabled={isSaving}
           >
             {isSaving ? "Saving..." : "Save"}
@@ -83,7 +83,7 @@ export default function DescriptionBox({ userId, projectId }: DescriptionBoxProp
       )}
 
       {showPopup && !isEditing && description && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-max max-w-[90vw] sm:max-w-[400px] rounded border border-gray-300 bg-white p-2 text-sm shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-2 max-w-[90vw] rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg sm:max-w-[420px]">
           {description}
         </div>
       )}

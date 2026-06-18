@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderOpenDot, FolderPlus, Home } from 'lucide-react';
 import { useProjects } from "@/context/ProjectsContext";
+import { getProjectVisual } from "@/lib/projectVisuals";
 
 export default function ProjectsPage() {
   const { projects } = useProjects();
@@ -36,11 +37,14 @@ export default function ProjectsPage() {
         ) : (
           <>
             <div className="grid w-full max-w-7xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-              {currentProjects.map((project) => (
+              {currentProjects.map((project) => {
+                const { icon: Icon, panelClass } = getProjectVisual(project.name);
+
+                return (
                 <div
                   key={project.id}
                   onClick={() => router.push(`/projects/${project.id}`)}
-                  className="cursor-pointer flex flex-col p-6 rounded-xl transition-transform transform hover:scale-105 shadow-md"
+                  className="cursor-pointer flex flex-col p-6 rounded-xl transition-transform transform hover:scale-[1.02] shadow-md"
                   style={{ backgroundColor: project.backgroundColour || '#4D3BED' }}
                 >
                   <h3 className="text-lg font-bold text-white truncate w-full">{project.name}</h3>
@@ -57,11 +61,14 @@ export default function ProjectsPage() {
                         alt={project.name}
                       />
                     ) : (
-                      <FolderOpenDot className="w-10 h-10 text-gray-400" />
+                      <div className={`flex h-full w-full items-center justify-center rounded-lg ${panelClass}`}>
+                        <Icon className="h-9 w-9" />
+                      </div>
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Bullet Pagination */}

@@ -5,6 +5,7 @@ export type Note = {
   y: number;
   width: number;
   height: number;
+  type?: "default" | "story";
 };
 
 

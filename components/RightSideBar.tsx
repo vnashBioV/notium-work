@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react'
-import { Plus, Clock, Paperclip } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Clock3, Paperclip, Plus } from 'lucide-react';
 import { useModal } from "@/context/ModalContext";
 import { useProjects } from "@/context/ProjectsContext";
 import { useRouter } from 'next/navigation';
@@ -18,78 +19,123 @@ const RightSideBar = () => {
       0
     );
     const overviewProjects = projects.slice(0, 2);
+    const weeklyHours = totalHours;
     const formatHours = (value: number) => {
       const safe = Number(value || 0);
       if (safe <= 0) return "0m";
       if (safe < 1) return `${Math.max(1, Math.round(safe * 60))}m`;
       return `${safe.toFixed(1)}h`;
     };
+    const railStagger = {
+      hidden: {},
+      visible: {
+        transition: {
+          staggerChildren: 0.08,
+        },
+      },
+    };
+    const railReveal = {
+      hidden: { opacity: 0, y: 20 },
+      visible: { opacity: 1, y: 0 },
+    };
 
     return (
-        <div className="flex h-full w-full flex-col gap-6 rounded-lg p-5 sm:p-6 shadow-lg">
-            {/* add project */}
-            <div 
-                className='relative flex cursor-pointer items-center justify-center rounded-xl bg-[#4D3BED] px-10 py-2 text-white'
+        <motion.div variants={railStagger} initial="hidden" animate="visible" className="flex h-full w-full flex-col gap-4">
+            <motion.button
+                variants={railReveal}
+                whileHover={{ boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)" }}
+                type="button"
+                className="group flex items-center justify-center gap-2 rounded-[22px] bg-white/72 p-3 text-base font-semibold text-white shadow-sm transition"
                 onClick={openModal}
             >
-                <p className='absolute left-4'><Plus size={20} className='text-white'/></p>
-                <p>Add project</p>
-            </div>
-            <div className='flex justify-between items-center border-b border-[#e0e0e0] pb-2'>
-                <p>Finished projects</p>
-                <p>{finishedProjects}</p>
-            </div>
-            <div className='flex justify-between items-center border-b border-[#e0e0e0] pb-2'>
-                <p>Projects in progress</p>
-                <p>{inProgressProjects}</p>
-            </div>
-            <div className='flex justify-between items-center border-b border-[#e0e0e0] pb-2'>
-                <p>Overall project time</p>
-                <p>{formatHours(totalHours)}</p>
-            </div>
+                <span className="flex w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#5b45ff_0%,#4f46e5_100%)] px-5 py-3">
+                    <Plus size={17} className="mr-2 text-white" />
+                    Add project
+                </span>
+            </motion.button>
 
-            {/* projects over view */}
-            <div className='text-sm'>
-                <p>Over view</p>
-            </div>
-            {overviewProjects.length === 0 ? (
-              <div className='w-full rounded-xl border border-[#e0e0e0] p-3 text-sm text-gray-500'>
-                No project data yet.
-              </div>
-            ) : (
-              overviewProjects.map((project) => {
-                const isCompleted = project.status === "completed";
-                const statusDot = project.status === "in-progress" ? "bg-blue-500" : isCompleted ? "bg-green-500" : "bg-yellow-600";
-                const statusLabel = project.status ? project.status.replace("-", " ") : "not started";
-                const attachmentsCount = project.attachments?.length ?? 0;
-                const projectHours = Number(project.timeSpentOnProject ?? 0);
+            <motion.section variants={railReveal} className="rounded-[24px] bg-white/78 p-5 shadow-sm">
+                <h2 className="text-[1.1rem] font-bold tracking-[-0.02em] text-slate-950">Overview</h2>
+                <div className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm text-slate-600">
+                        <span>Finished projects</span>
+                        <span className="font-semibold text-slate-950">{finishedProjects}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm text-slate-600">
+                        <span>Projects in progress</span>
+                        <span className="font-semibold text-slate-950">{inProgressProjects}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm text-slate-600">
+                        <span>Overall project time</span>
+                        <span className="font-semibold text-slate-950">{formatHours(totalHours)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-slate-600">
+                        <span>This week</span>
+                        <span className="font-semibold text-slate-950">{formatHours(weeklyHours)}</span>
+                    </div>
+                </div>
+            </motion.section>
 
-                return (
-                  <div
-                    key={project.id ?? project.name}
-                    onClick={() => project.id && router.push(`/projects/${project.id}`)}
-                    className='w-full flex flex-col gap-2 rounded-xl border border-[#e0e0e0] p-2 hover:bg-gray-50'
-                  >
-                    <div className='flex items-center justify-between'>
-                      <div className='min-w-0'>
-                        <p className='truncate'>{project.name}</p>
-                        <p className='truncate text-xs text-gray-500'>{project.description || "No description"}</p>
+            <motion.section variants={railReveal} className="rounded-[24px] bg-white/78 p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[1.1rem] font-bold tracking-[-0.02em] text-slate-950">My tasks</h2>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                    {overviewProjects.length === 0 ? (
+                      <div className='w-full rounded-[18px] bg-slate-50/80 p-4 text-sm text-slate-500'>
+                        No project data yet.
                       </div>
-                      <div className='ml-2 flex flex-row items-center gap-2 text-xs capitalize'>
-                        <div className={`h-[8px] w-[8px] rounded-full ${statusDot}`}></div>
-                        <p>{statusLabel}</p>
-                        <input type="checkbox" checked={isCompleted} readOnly className='m-0 p-0' />
-                      </div>
-                    </div>
-                    <div className='flex items-center justify-between text-xs'>
-                      <div className='flex flex-row items-center gap-1'><Clock size={12}/><p>{formatHours(projectHours)}</p></div>
-                      <div className='flex flex-row items-center gap-1'><Paperclip size={12}/><p>{attachmentsCount} attachments</p></div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-        </div>
+                    ) : (
+                      overviewProjects.map((project) => {
+                        const isCompleted = project.status === "completed";
+                        const statusDot = project.status === "in-progress" ? "bg-sky-500" : isCompleted ? "bg-emerald-500" : "bg-amber-500";
+                        const statusLabel = project.status ? project.status.replace("-", " ") : "Not Started";
+                        const attachmentsCount = project.attachments?.length ?? 0;
+                        const projectHours = Number(project.timeSpentOnProject ?? 0);
+
+                        return (
+                          <motion.button
+                            initial={{ opacity: 0, y: 14 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.4 }}
+                            transition={{ duration: 0.45 }}
+                            whileHover={{ boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)" }}
+                            key={project.id ?? project.name}
+                            type="button"
+                            onClick={() => project.id && router.push(`/projects/${project.id}`)}
+                            className='flex w-full flex-col gap-3 rounded-[18px] bg-white/85 p-4 text-left transition'
+                          >
+                            <div className='flex items-start justify-between gap-3'>
+                              <div className='min-w-0'>
+                                <p className='truncate text-[15px] font-bold tracking-[-0.02em] text-slate-950'>{project.name}</p>
+                                <p className='mt-1 truncate text-[13px] text-slate-500'>{project.description || "No description"}</p>
+                              </div>
+                              <div className='flex items-center gap-2 pl-2 text-xs font-medium text-slate-500'>
+                                <div className={`h-2.5 w-2.5 rounded-full ${statusDot}`}></div>
+                                <p className='whitespace-nowrap'>{statusLabel}</p>
+                                <span className={`h-4 w-4 rounded-[5px] border ${isCompleted ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white'}`}></span>
+                              </div>
+                            </div>
+                            <div className='flex items-center justify-between gap-3 text-[13px] text-slate-500'>
+                              <div className='flex items-center gap-2'><Clock3 size={14}/><p>{formatHours(projectHours)}</p></div>
+                              <div className='flex items-center gap-2'><Paperclip size={14}/><p>{attachmentsCount} attachments</p></div>
+                            </div>
+                          </motion.button>
+                        );
+                      })
+                    )}
+                </div>
+
+                <button
+                  type="button"
+                  className="mt-5 w-full text-center text-sm font-semibold text-[#4f46e5] transition hover:text-[#4338ca]"
+                  onClick={() => router.push('/projects')}
+                >
+                  View all tasks
+                </button>
+            </motion.section>
+        </motion.div>
     )
 }
 

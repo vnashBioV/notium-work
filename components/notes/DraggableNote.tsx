@@ -9,6 +9,7 @@ export type Note = {
   y: number;
   width: number;
   height: number;
+  type?: "default" | "story";
 };
 
 interface DraggableNoteProps {
@@ -38,6 +39,7 @@ export const DraggableNote = ({
   const [resizing, setResizing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [fontSize, setFontSize] = useState(14);
+  const isStoryNote = note.type === "story";
 
   const getScrollContainer = (element: HTMLElement): HTMLElement | Window => {
     const container = element.closest('[data-canvas-scroll]');
@@ -102,7 +104,10 @@ export const DraggableNote = ({
     if (
       target.closest('[contenteditable="true"]') || 
       target.closest('.tiptap-toolbar') ||          
+      target.closest('[data-note-editor-control="true"]') ||
+      target.closest('button') ||
       target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
       target.classList.contains('resize-handle')
     ) {
       return;
@@ -180,8 +185,10 @@ export const DraggableNote = ({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className={`absolute bg-white shadow-md rounded text-[#222222] pt-8 text-sm border-2 ${
-        selected ? 'border-[#4D3BED]' : 'border-transparent'
+      className={`absolute rounded text-[#222222] pt-8 text-sm border-2 shadow-md ${
+        isStoryNote ? 'bg-[#fffaf0] shadow-[0_16px_34px_rgba(180,83,9,0.12)]' : 'bg-white'
+      } ${
+        selected ? 'border-[#4D3BED]' : isStoryNote ? 'border-[#f3d19c]' : 'border-transparent'
       }`}
       style={{
         left: pos.x,
@@ -216,12 +223,18 @@ export const DraggableNote = ({
       </button>
 
       {/* Editable content wrapper */}
+      {isStoryNote ? (
+        <div className="pointer-events-none absolute left-9 top-1.5 z-30 rounded-full bg-[#fff1d6] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b45309]">
+          Story
+        </div>
+      ) : null}
       <div
         className="absolute inset-0 p-3 pb-6 overflow-auto"
         style={{ pointerEvents: dragging ? "none" : "auto" }}
       >
         <Tiptap
           content={note.content}
+          variant={isStoryNote ? "story" : "default"}
           onChange={(val: any) => onContentChange(note.id, val)}
         />
       </div>
