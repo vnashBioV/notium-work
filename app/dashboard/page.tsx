@@ -164,20 +164,20 @@ export default function Dashboard() {
           variants={revealUp}
           initial="hidden"
           animate="visible"
-          className="bg-white/60 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8"
+          className="border-b border-white/60 bg-white/60 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8"
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm lg:hidden"
+                className="dashboard-card-border flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 lg:hidden"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 <Menu size={22} />
               </button>
 
               <div className="relative w-full md:w-[500px]">
-                <div className="flex h-14 items-center rounded-[22px] bg-white/90 px-5 shadow-sm backdrop-blur-sm">
+                <div className="dashboard-card-border flex h-14 items-center rounded-[22px] bg-white/90 px-5 backdrop-blur-sm">
                   <Search className="h-4.5 w-4.5 text-slate-400" />
                   <input
                     type="text"
@@ -186,7 +186,7 @@ export default function Dashboard() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="ml-3 flex-1 bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400"
                   />
-                  <div className="hidden items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:flex">
+                  <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 sm:flex">
                     <Command className="h-4 w-4" />
                     <span>K</span>
                   </div>
@@ -195,7 +195,7 @@ export default function Dashboard() {
                 <AnimatePresence>
                   {searchTerm.trim() && (
                     <motion.div
-                      className="absolute left-0 right-0 top-16 z-30 max-h-72 overflow-auto rounded-[22px] bg-white/95 p-2 shadow-lg backdrop-blur-sm"
+                      className="dashboard-card-border-strong absolute left-0 right-0 top-16 z-30 max-h-72 overflow-auto rounded-[22px] bg-white/95 p-2 backdrop-blur-sm"
                       initial={{ opacity: 0, y: -6, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -4, scale: 0.99 }}
@@ -256,7 +256,7 @@ export default function Dashboard() {
           <section className="min-w-0 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
             <motion.div
               variants={revealSoft}
-              className="relative overflow-hidden rounded-[28px] bg-[linear-gradient(113deg,#e4f3ff_0%,#f8f6ff_44%,#efe9ff_100%)] px-0"
+              className="dashboard-card-border relative overflow-hidden rounded-[28px] bg-[linear-gradient(113deg,#e4f3ff_0%,#f8f6ff_44%,#efe9ff_100%)] px-0"
             >
               <div
                 data-hero-glow

@@ -45,7 +45,7 @@ const RightSideBar = () => {
                 variants={railReveal}
                 whileHover={{ boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)" }}
                 type="button"
-                className="group flex items-center justify-center gap-2 rounded-[22px] bg-white/72 p-3 text-base font-semibold text-white shadow-sm transition"
+                className="dashboard-card-border group flex items-center justify-center gap-2 rounded-[22px] bg-[rgba(90,80,255,0.14)] p-3 text-base font-semibold text-white transition"
                 onClick={openModal}
             >
                 <span className="flex w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#5b45ff_0%,#4f46e5_100%)] px-5 py-3">
@@ -54,7 +54,7 @@ const RightSideBar = () => {
                 </span>
             </motion.button>
 
-            <motion.section variants={railReveal} className="rounded-[24px] bg-white/78 p-5 shadow-sm">
+            <motion.section variants={railReveal} className="dashboard-card-border rounded-[24px] bg-white/78 p-5">
                 <h2 className="text-[1.1rem] font-bold tracking-[-0.02em] text-slate-950">Overview</h2>
                 <div className="mt-4 space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm text-slate-600">
@@ -76,14 +76,14 @@ const RightSideBar = () => {
                 </div>
             </motion.section>
 
-            <motion.section variants={railReveal} className="rounded-[24px] bg-white/78 p-5 shadow-sm">
+            <motion.section variants={railReveal} className="dashboard-card-border rounded-[24px] bg-white/78 p-5">
                 <div className="flex items-center justify-between">
                     <h2 className="text-[1.1rem] font-bold tracking-[-0.02em] text-slate-950">My tasks</h2>
                 </div>
 
                 <div className="mt-4 space-y-3">
                     {overviewProjects.length === 0 ? (
-                      <div className='w-full rounded-[18px] bg-slate-50/80 p-4 text-sm text-slate-500'>
+                      <div className='w-full rounded-[18px] border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-500'>
                         No project data yet.
                       </div>
                     ) : (
@@ -104,7 +104,7 @@ const RightSideBar = () => {
                             key={project.id ?? project.name}
                             type="button"
                             onClick={() => project.id && router.push(`/projects/${project.id}`)}
-                            className='flex w-full flex-col gap-3 rounded-[18px] bg-white/85 p-4 text-left transition'
+                            className='dashboard-card-border-strong flex w-full flex-col gap-3 rounded-[18px] bg-white/85 p-4 text-left transition'
                           >
                             <div className='flex items-start justify-between gap-3'>
                               <div className='min-w-0'>
@@ -117,7 +117,7 @@ const RightSideBar = () => {
                                 <span className={`h-4 w-4 rounded-[5px] border ${isCompleted ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white'}`}></span>
                               </div>
                             </div>
-                            <div className='flex items-center justify-between gap-3 text-[13px] text-slate-500'>
+                            <div className='flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-[13px] text-slate-500'>
                               <div className='flex items-center gap-2'><Clock3 size={14}/><p>{formatHours(projectHours)}</p></div>
                               <div className='flex items-center gap-2'><Paperclip size={14}/><p>{attachmentsCount} attachments</p></div>
                             </div>

@@ -42,7 +42,7 @@ const RecentProjects = ({ projects: incomingProjects, emptyMessage, limit = 8 }:
   return (
     <div className="relative">
       {projects.length === 0 ? (
-        <div className="flex h-[200px] w-full max-w-[260px] flex-col items-center justify-center rounded-[24px] bg-white/70 p-6 text-center text-slate-500 shadow-sm sm:h-[220px]">
+        <div className="dashboard-card-border flex h-[200px] w-full max-w-[260px] flex-col items-center justify-center rounded-[24px] bg-white/70 p-6 text-center text-slate-500 sm:h-[220px]">
           <div className="h-[50%] w-[50%] text-center">
             <img
               src="/empty-box.png"
@@ -67,7 +67,7 @@ const RecentProjects = ({ projects: incomingProjects, emptyMessage, limit = 8 }:
                 key={project.id ?? i}
                 type="button"
                 onClick={() => project.id && router.push(`/projects/${project.id}`)}
-                className="group flex min-h-[188px] flex-col rounded-[24px] bg-white/72 p-4 text-left shadow-sm backdrop-blur-sm transition"
+                className="dashboard-card-border group flex min-h-[188px] flex-col rounded-[24px] bg-white/72 p-4 text-left backdrop-blur-sm transition"
               >
                 <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-[16px] bg-gradient-to-br ${accentClass}`}>
                   {project.imageUrl ? (
@@ -91,7 +91,7 @@ const RecentProjects = ({ projects: incomingProjects, emptyMessage, limit = 8 }:
                   {project.description || "No description"}
                 </p>
 
-                <div className="mt-auto flex items-center gap-2 pt-5 text-[13px] text-slate-500">
+                <div className="mt-auto flex items-center gap-2 border-t border-slate-100 pt-5 text-[13px] text-slate-500">
                   <Clock3 className="h-3.5 w-3.5" />
                   <span>{formatHours(Number(project.timeSpentOnProject ?? 0))}</span>
                 </div>

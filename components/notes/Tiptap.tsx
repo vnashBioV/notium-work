@@ -7,6 +7,8 @@ import Heading from "@tiptap/extension-heading";
 import BulletList from "@tiptap/extension-bullet-list";
 import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
+import Placeholder from "@tiptap/extension-placeholder";
+import Underline from "@tiptap/extension-underline";
 import {
   BookOpenText,
   Clapperboard,
@@ -91,27 +93,44 @@ export default function Tiptap({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        heading: false,
         bulletList: false,
         orderedList: false,
-        listItem: false, // disable built-ins
+        listItem: false,
       }),
       Heading.configure({
         HTMLAttributes: {
-          class: "text-xl font-bold",
-          levels: [2],
+          class: "font-semibold tracking-[-0.03em]",
+        },
+        levels: [1, 2],
+      }),
+      BulletList.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: "my-3 list-disc pl-6",
         },
       }),
-      BulletList,
-      OrderedList,
-      ListItem, 
+      OrderedList.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: "my-3 list-decimal pl-6",
+        },
+      }),
+      ListItem,
+      Underline,
+      Placeholder.configure({
+        placeholder: isStory
+          ? "Write the scene, story structure, or worldbuilding details here..."
+          : "Start typing here. Use the toolbar above for headings, bold text, and lists.",
+      }),
     ],
     content,
     editorProps: {
       attributes: {
         class:
           isStory
-            ? "rounded-xl min-h-[220px] mt-3 outline-none bg-[#fffdf8] p-3 text-[14px] leading-7 text-[#3f3122]"
-            : "rounded-md min-h-[150px] mt-3 outline-none bg-back p-2",
+            ? "tiptap-editor rounded-xl min-h-[220px] mt-3 outline-none bg-[#fffdf8] px-4 py-3 text-[14px] leading-7 text-[#3f3122]"
+            : "tiptap-editor rounded-md min-h-[150px] mt-3 outline-none bg-back p-2 text-[14px] leading-6 text-[#222222]",
       },
     },
     onUpdate({ editor }) {

@@ -1,8 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, FolderOpenDot, Home, Settings, X } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useMediaQuery } from 'react-responsive';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -12,6 +13,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const isDesktop = useMediaQuery({ minWidth: 1024 });
 
   const isActive = (route: string) => pathname === route;
   const navItems = [
@@ -32,27 +34,42 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     hidden: { opacity: 0, x: -20 },
     visible: { opacity: 1, x: 0 },
   };
-
   return (
     <>
-      {sidebarOpen ? (
-        <button
-          type="button"
-          aria-label="Close navigation"
-          className="fixed inset-0 z-30 bg-slate-950/25 backdrop-blur-[1px] lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      ) : null}
+      <AnimatePresence>
+        {sidebarOpen ? (
+          <motion.button
+            type="button"
+            aria-label="Close navigation"
+            className="fixed inset-0 z-30 bg-slate-950/25 backdrop-blur-[1px] lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <motion.aside
-        initial={{ opacity: 0, x: -24 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.58 }}
-        className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-white/92 px-4 py-6 shadow-lg backdrop-blur-xl transition-transform duration-300 lg:relative lg:translate-x-0 lg:shadow-none ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        initial={false}
+        animate={{
+          x: isDesktop || sidebarOpen ? 0 : -272,
+          opacity: isDesktop || sidebarOpen ? 1 : 0.96,
+        }}
+        transition={{
+          x: { type: 'spring', stiffness: 260, damping: 28, mass: 0.9 },
+          opacity: { duration: 0.18, ease: 'easeOut' },
+        }}
+        className="dashboard-card-border fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col rounded-r-[28px] bg-white/92 px-4 py-6 backdrop-blur-xl lg:relative lg:rounded-none lg:border-r lg:border-y-0 lg:border-l-0 lg:shadow-none"
       >
-        <motion.div variants={itemReveal} initial="hidden" animate="visible" className="mb-8 flex items-center justify-between px-3">
+        <motion.div
+          variants={itemReveal}
+          initial="hidden"
+          animate={isDesktop || sidebarOpen ? 'visible' : 'hidden'}
+          transition={{ duration: 0.24, ease: 'easeOut' }}
+          className="mb-8 flex items-center justify-between px-3"
+        >
           <button
             type="button"
             onClick={() => {
@@ -82,7 +99,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         <motion.nav
           variants={sidebarList}
           initial="hidden"
-          animate="visible"
+          animate={isDesktop || sidebarOpen ? 'visible' : 'hidden'}
           className="flex flex-col gap-1.5"
         >
           {navItems.map(({ label, route, icon: Icon }) => {
@@ -118,7 +135,13 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           })}
         </motion.nav>
 
-        <motion.div variants={itemReveal} initial="hidden" animate="visible" transition={{ delay: 0.24 }} className="mt-auto pt-6">
+        <motion.div
+          variants={itemReveal}
+          initial="hidden"
+          animate={isDesktop || sidebarOpen ? 'visible' : 'hidden'}
+          transition={{ delay: isDesktop || sidebarOpen ? 0.18 : 0, duration: 0.22, ease: 'easeOut' }}
+          className="mt-auto border-t border-slate-200/80 pt-6"
+        >
           <motion.button
             type="button"
             onClick={() => {
@@ -143,4 +166,3 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 };
 
 export default Navbar;
-

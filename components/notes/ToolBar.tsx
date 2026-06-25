@@ -2,11 +2,14 @@
 
 import {type Editor} from "@tiptap/react";
 import {
-    Bold, 
-    Strikethrough,
+    Bold,
+    Pilcrow,
     Italic,
     List,
     ListOrdered,
+    Redo2,
+    Underline as UnderlineIcon,
+    Undo2,
     Heading2,
 } from "lucide-react";
 import {Toggle} from "../ui/toggle";
@@ -20,11 +23,40 @@ export function Toolbar ({ editor }: Props){
         return null
     }
     return (
-        <div className="tiptap-toolbar bg-transparent rounded text-[#cfcfcf] flex gap-1 p-1">
+        <div className="tiptap-toolbar bg-transparent rounded text-[#cfcfcf] flex flex-wrap gap-1 p-1">
+            <button
+                type="button"
+                className="inline-flex h-8 min-w-8 items-center justify-center rounded px-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40"
+                onClick={() => editor.chain().focus().undo().run()}
+                disabled={!editor.can().chain().focus().undo().run()}
+                title="Undo"
+            >
+                <Undo2 className="h-4 w-4" />
+            </button>
+            <button
+                type="button"
+                className="inline-flex h-8 min-w-8 items-center justify-center rounded px-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40"
+                onClick={() => editor.chain().focus().redo().run()}
+                disabled={!editor.can().chain().focus().redo().run()}
+                title="Redo"
+            >
+                <Redo2 className="h-4 w-4" />
+            </button>
+            <div className="mx-1 h-5 w-px bg-gray-200" />
             <Toggle
                 size="sm"
                 className="cursor-pointer"
-                pressed={editor.isActive("heading")}
+                pressed={editor.isActive("paragraph")}
+                onPressedChange={() =>
+                editor.chain().focus().setParagraph().run()
+                }
+            >
+                <Pilcrow className="h-4 w-4" />
+            </Toggle>
+            <Toggle
+                size="sm"
+                className="cursor-pointer"
+                pressed={editor.isActive("heading", { level: 2 })}
                 onPressedChange={() =>
                 editor.chain().focus().toggleHeading({ level: 2 }).run()
                 }
@@ -54,13 +86,14 @@ export function Toolbar ({ editor }: Props){
             <Toggle
                 size="sm"
                 className="cursor-pointer"
-                pressed={editor.isActive("strike")}
+                pressed={editor.isActive("underline")}
                 onPressedChange={() =>
-                editor.chain().focus().toggleStrike().run()
+                editor.chain().focus().toggleUnderline().run()
                 }
             >
-                <Strikethrough className="h-4 w-4" />
+                <UnderlineIcon className="h-4 w-4" />
             </Toggle>
+            <div className="mx-1 h-5 w-px bg-gray-200" />
             <Toggle
                 size="sm"
                 className="cursor-pointer"

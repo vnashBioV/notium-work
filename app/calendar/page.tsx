@@ -520,7 +520,21 @@ export default function CalendarPage() {
   const requestGoogleAccessToken = async (prompt: 'consent' | '' = '') => {
     if (!tokenClientRef.current) throw new Error('Google Calendar OAuth is not configured.');
     return new Promise<string>((resolve, reject) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(
+          new Error(
+            'Google sign-in popup was blocked or closed. Allow popups for this site, then click Connect Google again.'
+          )
+        );
+      }, 15000);
+
       tokenClientRef.current.callback = (response: any) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
         if (response?.error || !response?.access_token) {
           reject(new Error(response?.error || 'Failed to connect Google Calendar.'));
           return;
@@ -529,6 +543,7 @@ export default function CalendarPage() {
         if (user?.uid && typeof window !== 'undefined') {
           localStorage.setItem(getGoogleAccessTokenStorageKey(user.uid), accessToken);
         }
+        setGoogleAccessToken(accessToken);
         resolve(accessToken);
       };
       const requestOptions: Record<string, string> = {};
@@ -538,18 +553,44 @@ export default function CalendarPage() {
     });
   };
 
-  const getGoogleRequestHeaders = async () => {
+  const clearStoredGoogleAccessToken = () => {
+    if (user?.uid && typeof window !== 'undefined') {
+      localStorage.removeItem(getGoogleAccessTokenStorageKey(user.uid));
+    }
+    setGoogleAccessToken(null);
+  };
+
+  const getGoogleRequestHeaders = async (forceRefresh = false) => {
     if (!googleClientReady || !tokenClientRef.current) {
       throw new Error(
         googleClientError || 'Google sign-in is not ready. Disable blockers, allow cookies, then refresh.'
       );
     }
-    let token = googleAccessToken;
+    let token = forceRefresh ? null : googleAccessToken;
     if (!token) {
-      token = await requestGoogleAccessToken('consent');
-      setGoogleAccessToken(token);
+      throw new Error('Connect Google Calendar first, then try syncing again.');
     }
     return { Authorization: `Bearer ${token}` };
+  };
+
+  const fetchWithGoogleAuth = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const execute = async (forceRefresh = false) => {
+      const authHeaders = await getGoogleRequestHeaders(forceRefresh);
+      return fetch(input, {
+        ...init,
+        headers: {
+          ...(init.headers ?? {}),
+          ...authHeaders,
+        },
+      });
+    };
+
+    let response = await execute(false);
+    if (response.status === 401) {
+      clearStoredGoogleAccessToken();
+      response = await execute(true);
+    }
+    return response;
   };
 
   const getGoogleSyncMap = () => {
@@ -573,16 +614,24 @@ export default function CalendarPage() {
   const handleSyncToGoogleCalendar = async () => {
     try {
       setSyncingGoogle(true);
-      const headers = await getGoogleRequestHeaders();
-      const now = new Date();
-      const horizon = new Date();
-      horizon.setDate(horizon.getDate() + 60);
       const map = getGoogleSyncMap();
       const nextMap = { ...map };
-      const candidates = filteredEvents.filter((event) => {
-        const start = new Date(event.startAt);
-        return start >= now && start <= horizon;
-      });
+      const candidates = filteredEvents
+        .filter((event) => {
+          const start = new Date(event.startAt);
+          const end = new Date(event.endAt);
+          return !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime());
+        })
+        .sort((a, b) => a.startAt.localeCompare(b.startAt));
+
+      if (candidates.length === 0) {
+        setInfoMessage(
+          projectFilter === 'all'
+            ? 'No calendar events found to sync.'
+            : 'No calendar events found for the selected project.'
+        );
+        return;
+      }
 
       for (const event of candidates) {
         const key = `${event.projectId}:${event.id}`;
@@ -599,10 +648,9 @@ export default function CalendarPage() {
           ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${linkedGoogleId}`
           : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
-        const response = await fetch(endpoint, {
+        const response = await fetchWithGoogleAuth(endpoint, {
           method,
           headers: {
-            ...headers,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(payload),
@@ -619,9 +667,24 @@ export default function CalendarPage() {
       setInfoMessage(`Synced ${candidates.length} event(s) to Google Calendar.`);
     } catch (error) {
       console.error(error);
-      setInfoMessage('Google Calendar sync failed.');
+      setInfoMessage(error instanceof Error ? error.message : 'Google Calendar sync failed.');
     } finally {
       setSyncingGoogle(false);
+    }
+  };
+
+  const handleConnectGoogleCalendar = async () => {
+    try {
+      setInfoMessage('');
+      await requestGoogleAccessToken('consent');
+      setInfoMessage('Google Calendar connected. You can sync now.');
+    } catch (error) {
+      console.error(error);
+      setInfoMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to connect Google Calendar. Allow popups for this site and try again.'
+      );
     }
   };
 
@@ -639,7 +702,6 @@ export default function CalendarPage() {
 
     try {
       setImportingGoogle(true);
-      const headers = await getGoogleRequestHeaders();
       const timeMin = new Date();
       timeMin.setDate(timeMin.getDate() - 7);
       const timeMax = new Date();
@@ -651,9 +713,7 @@ export default function CalendarPage() {
         timeMax: timeMax.toISOString(),
         maxResults: '100',
       });
-      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
-        headers,
-      });
+      const response = await fetchWithGoogleAuth(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`);
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || 'Failed to import from Google Calendar.');
@@ -699,7 +759,7 @@ export default function CalendarPage() {
       setInfoMessage(importedCount > 0 ? `Imported ${importedCount} event(s) from Google Calendar.` : 'No new Google events to import.');
     } catch (error) {
       console.error(error);
-      setInfoMessage('Google Calendar import failed.');
+      setInfoMessage(error instanceof Error ? error.message : 'Google Calendar import failed.');
     } finally {
       setImportingGoogle(false);
     }
@@ -752,79 +812,108 @@ export default function CalendarPage() {
       <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex min-h-screen flex-1 flex-col p-4 sm:p-6 lg:p-8">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="mb-4 flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-bold text-black">Calendar</h1>
             <p className="text-sm text-gray-500">Schedule work by project and keep your week balanced.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-10 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-black shadow-[0_3px_10px_rgba(15,23,42,0.05)] outline-none"
-            >
-              <option value="all">All projects</option>
-              {projects
-                .filter((project) => !!project.id)
-                .map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-            </select>
-            <button
-              onClick={handleSmartPlanWeek}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm font-medium text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] active:scale-[0.98]"
-            >
-              <Wand2 size={16} className="shrink-0 text-[#4D3BED]" />
-              Smart Plan Week
-            </button>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#4D3BED]/40 bg-[#EEF0FF] px-3 text-sm font-semibold text-[#1B1C3A] shadow-[0_3px_10px_rgba(77,59,237,0.08)] transition hover:bg-[#E5E8FF] active:scale-[0.98]"
-            >
-              <Plus size={16} className="shrink-0 text-[#4D3BED]" />
-              Add Event
-            </button>
-            <button
-              onClick={handleSyncToGoogleCalendar}
-              disabled={syncingGoogle}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={`shrink-0 text-[#4D3BED] ${syncingGoogle ? 'animate-spin' : ''}`} />
-              {syncingGoogle ? 'Syncing...' : 'Sync to Google'}
-            </button>
-            <button
-              onClick={handleImportFromGoogleCalendar}
-              disabled={importingGoogle}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] disabled:opacity-50"
-            >
-              <Download size={16} className="shrink-0 text-[#4D3BED]" />
-              {importingGoogle ? 'Importing...' : 'Import from Google'}
-            </button>
-            <button
-              onClick={requestNotificationPermission}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6]"
-            >
-              {notificationPermission === 'granted' ? (
-                <BellRing size={16} className="shrink-0 text-[#4D3BED]" />
-              ) : (
-                <Bell size={16} className="shrink-0 text-[#4D3BED]" />
-              )}
-              {notificationPermission === 'granted' ? 'Notifications On' : 'Enable Notifications'}
-            </button>
-            <label className="flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-xs text-gray-700 shadow-[0_3px_10px_rgba(15,23,42,0.05)]">
-              Reminder
-              <input
-                type="number"
-                min={1}
-                max={120}
-                value={reminderMinutes}
-                onChange={(e) => setReminderMinutes(Math.max(1, Number(e.target.value) || 10))}
-                className="h-6 w-14 rounded-md border border-gray-300 bg-white px-1 py-0.5 text-xs text-black"
-              />
-              min
-            </label>
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.15fr_1fr_1fr]">
+            <div className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-[0_3px_10px_rgba(15,23,42,0.05)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">Scope</p>
+              <p className="mt-1 text-sm text-gray-500">Choose which project calendar you&apos;re looking at.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  className="h-10 min-w-[180px] rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-black shadow-[0_3px_10px_rgba(15,23,42,0.05)] outline-none"
+                >
+                  <option value="all">All projects</option>
+                  {projects
+                    .filter((project) => !!project.id)
+                    .map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  onClick={openCreateModal}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#4D3BED]/40 bg-[#EEF0FF] px-3 text-sm font-semibold text-[#1B1C3A] shadow-[0_3px_10px_rgba(77,59,237,0.08)] transition hover:bg-[#E5E8FF] active:scale-[0.98]"
+                >
+                  <Plus size={16} className="shrink-0 text-[#4D3BED]" />
+                  Add Event
+                </button>
+                <button
+                  onClick={handleSmartPlanWeek}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm font-medium text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] active:scale-[0.98]"
+                >
+                  <Wand2 size={16} className="shrink-0 text-[#4D3BED]" />
+                  Smart Plan
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-[0_3px_10px_rgba(15,23,42,0.05)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">Google Calendar</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Step 1: connect Google. Step 2: sync or import events.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleConnectGoogleCalendar}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6]"
+                >
+                  <RefreshCw size={16} className="shrink-0 text-[#4D3BED]" />
+                  {googleAccessToken ? 'Reconnect Google' : 'Connect Google'}
+                </button>
+                <button
+                  onClick={handleSyncToGoogleCalendar}
+                  disabled={syncingGoogle}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={`shrink-0 text-[#4D3BED] ${syncingGoogle ? 'animate-spin' : ''}`} />
+                  {syncingGoogle ? 'Syncing...' : 'Sync'}
+                </button>
+                <button
+                  onClick={handleImportFromGoogleCalendar}
+                  disabled={importingGoogle}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6] disabled:opacity-50"
+                >
+                  <Download size={16} className="shrink-0 text-[#4D3BED]" />
+                  {importingGoogle ? 'Importing...' : 'Import'}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-[0_3px_10px_rgba(15,23,42,0.05)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">Reminders</p>
+              <p className="mt-1 text-sm text-gray-500">Turn notifications on and choose how early you want alerts.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={requestNotificationPermission}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-sm text-[#1F2430] shadow-[0_3px_10px_rgba(15,23,42,0.05)] transition hover:bg-[#F3F4F6]"
+                >
+                  {notificationPermission === 'granted' ? (
+                    <BellRing size={16} className="shrink-0 text-[#4D3BED]" />
+                  ) : (
+                    <Bell size={16} className="shrink-0 text-[#4D3BED]" />
+                  )}
+                  {notificationPermission === 'granted' ? 'Notifications On' : 'Enable Notifications'}
+                </button>
+                <label className="flex h-10 items-center gap-2 rounded-xl border border-white/70 bg-white/90 px-3 text-xs text-gray-700 shadow-[0_3px_10px_rgba(15,23,42,0.05)]">
+                  Reminder
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={reminderMinutes}
+                    onChange={(e) => setReminderMinutes(Math.max(1, Number(e.target.value) || 10))}
+                    className="h-6 w-14 rounded-md border border-gray-300 bg-white px-1 py-0.5 text-xs text-black"
+                  />
+                  min
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 

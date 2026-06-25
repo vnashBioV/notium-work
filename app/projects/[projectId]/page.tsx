@@ -454,7 +454,7 @@ export default function ProjectNotesPage() {
       content:
         type === "story"
           ? "<h2>Full Story Synopsis</h2><p><strong>Premise:</strong> What is the full story about?</p><p><strong>Beginning:</strong> </p><p><strong>Middle:</strong> </p><p><strong>Ending:</strong> </p><h2>Character Background</h2><p><strong>Main character:</strong> </p><p><strong>Backstory:</strong> </p><p><strong>Goal:</strong> </p><p><strong>Flaw:</strong> </p><h2>Timeline of Major Events</h2><ol><li>Opening situation</li><li>Inciting incident</li><li>Major reversal</li><li>Climax</li><li>Resolution</li></ol><h2>Environmental Storytelling Ideas</h2><ul><li>Visual clue in the environment</li><li>Prop that reveals history</li><li>Location with hidden narrative meaning</li></ul><h2>Journal Entries</h2><p><strong>Entry 01:</strong> </p><h2>Voice Log Scripts</h2><p><strong>Voice log 01:</strong> </p><h2>Object Descriptions</h2><p><strong>Key object:</strong> </p><p><strong>Meaning:</strong> </p><h2>Final Ending Sequence</h2><p><strong>Final trigger:</strong> </p><p><strong>Final image:</strong> </p><p><strong>Emotion to leave the player with:</strong> </p>"
-          : "New Note",
+          : "<p></p>",
       x: 100 + Math.random() * 200,
       y: 100 + Math.random() * 200,
       width: type === "story" ? 320 : 200,
